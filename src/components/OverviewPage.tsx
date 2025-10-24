@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-// import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface OverviewPageProps {
   onTemplateSelect: (template: 'single' | 'multi') => void;
@@ -197,12 +197,11 @@ const FeatureDescription = styled.p`
 `;
 
 const OverviewPage: React.FC<OverviewPageProps> = ({ onTemplateSelect }) => {
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const handleTemplateSelect = (template: 'single' | 'multi') => {
     onTemplateSelect(template);
-    // navigate(`/${template}`);
-    window.location.href = `/${template}`;
+    navigate(`/${template}`);
   };
 
   return (

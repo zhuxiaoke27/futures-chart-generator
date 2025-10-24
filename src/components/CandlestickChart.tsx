@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -159,8 +159,9 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
   const [chartReady, setChartReady] = React.useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMounted, setIsMounted] = React.useState(false);
-  
-  const candleData = generateCandlestickData(data.currentPrice);
+
+  // 使用 useMemo 缓存生成的K线数据，仅在价格变化时重新计算
+  const candleData = useMemo(() => generateCandlestickData(data.currentPrice), [data.currentPrice]);
   
   useEffect(() => {
     // 确保组件已挂载
@@ -202,7 +203,8 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
     );
   }
 
-  const chartData: any = {
+  // 使用 useMemo 缓存图表数据配置，避免不必要的重新渲染
+  const chartData: any = useMemo(() => ({
     datasets: [
       {
         label: 'K线图',
@@ -214,9 +216,10 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
         },
       }
     ],
-  };
+  }), [candleData]);
 
-  const options: any = {
+  // 使用 useMemo 缓存图表选项配置
+  const options: any = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
     animation: {
@@ -301,7 +304,7 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
         },
       },
     },
-  };
+  }), [setChartReady]); // options 依赖 setChartReady 函数
 
   const isPositive = data.changePercent >= 0;
 
