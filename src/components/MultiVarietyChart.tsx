@@ -441,6 +441,7 @@ const defaultVarieties: VarietyData[] = [
 
 const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVarietiesChange }) => {
   const [localVarieties, setLocalVarieties] = useState<VarietyData[]>(varieties.length > 0 ? varieties : defaultVarieties);
+  const [justImportedId, setJustImportedId] = useState<string | null>(null);
 
   const handleVarietyDataChange = (varietyId: string, field: keyof FuturesData, value: string | number) => {
     setLocalVarieties(prev => prev.map(variety => {
@@ -463,6 +464,62 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
         return {
           ...variety,
           opinions
+        };
+      }
+      return variety;
+    }));
+    // 标记刚导入的品种，显示提示
+    setJustImportedId(varietyId);
+    setTimeout(() => setJustImportedId(null), 3000);
+  };
+
+  // 处理观点编辑
+  const handleOpinionEdit = (varietyId: string, opinionIndex: number, field: keyof CompanyOpinion, value: string) => {
+    setLocalVarieties(prev => prev.map(variety => {
+      if (variety.id === varietyId) {
+        const updatedOpinions = [...variety.opinions];
+        updatedOpinions[opinionIndex] = {
+          ...updatedOpinions[opinionIndex],
+          [field]: value
+        };
+        return {
+          ...variety,
+          opinions: updatedOpinions
+        };
+      }
+      return variety;
+    }));
+  };
+
+  // 添加观点
+  const handleAddOpinion = (varietyId: string) => {
+    setLocalVarieties(prev => prev.map(variety => {
+      if (variety.id === varietyId) {
+        return {
+          ...variety,
+          opinions: [
+            ...variety.opinions,
+            {
+              company: '',
+              direction: '',
+              support: '',
+              resistance: '',
+              logic: ''
+            }
+          ]
+        };
+      }
+      return variety;
+    }));
+  };
+
+  // 删除观点
+  const handleRemoveOpinion = (varietyId: string, opinionIndex: number) => {
+    setLocalVarieties(prev => prev.map(variety => {
+      if (variety.id === varietyId) {
+        return {
+          ...variety,
+          opinions: variety.opinions.filter((_, index) => index !== opinionIndex)
         };
       }
       return variety;
@@ -569,6 +626,110 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
               onDataImport={(opinions) => handleOpinionImport(variety.id, opinions)}
               onError={(error) => console.error('导入错误:', error)}
             />
+
+            {/* 观点列表区域 */}
+            <div style={{ marginTop: '15px', borderTop: '1px solid #e0e0e0', paddingTop: '15px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h5 style={{ margin: 0, fontSize: '13px', color: '#666', fontWeight: 'bold' }}>
+                  观点列表 ({variety.opinions.length})
+                  {justImportedId === variety.id && (
+                    <span style={{ color: '#28a745', fontSize: '11px', marginLeft: '8px' }}>
+                      ✓ 已导入
+                    </span>
+                  )}
+                </h5>
+                <Button
+                  onClick={() => handleAddOpinion(variety.id)}
+                  style={{ padding: '4px 10px', fontSize: '12px' }}
+                >
+                  + 添加
+                </Button>
+              </div>
+
+              {variety.opinions.length === 0 ? (
+                <div style={{
+                  padding: '15px',
+                  background: '#f9f9f9',
+                  borderRadius: '4px',
+                  textAlign: 'center',
+                  color: '#999',
+                  fontSize: '12px'
+                }}>
+                  暂无观点数据，请导入Excel或手动添加
+                </div>
+              ) : (
+                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                  {variety.opinions.map((opinion, opIndex) => (
+                    <div
+                      key={opIndex}
+                      style={{
+                        padding: '10px',
+                        background: '#f9f9f9',
+                        borderRadius: '4px',
+                        marginBottom: '10px',
+                        position: 'relative'
+                      }}
+                    >
+                      <RemoveButton
+                        onClick={() => handleRemoveOpinion(variety.id, opIndex)}
+                        style={{
+                          position: 'absolute',
+                          top: '10px',
+                          right: '10px',
+                          padding: '2px 6px',
+                          fontSize: '11px'
+                        }}
+                      >
+                        删除
+                      </RemoveButton>
+
+                      <InputGroup style={{ gridTemplateColumns: '1fr 1fr' }}>
+                        <InputField>
+                          <Label>期货公司</Label>
+                          <Input
+                            value={opinion.company}
+                            onChange={(e) => handleOpinionEdit(variety.id, opIndex, 'company', e.target.value)}
+                            style={{ fontSize: '12px', padding: '5px 8px' }}
+                          />
+                        </InputField>
+                        <InputField>
+                          <Label>方向</Label>
+                          <Input
+                            value={opinion.direction}
+                            onChange={(e) => handleOpinionEdit(variety.id, opIndex, 'direction', e.target.value)}
+                            style={{ fontSize: '12px', padding: '5px 8px' }}
+                          />
+                        </InputField>
+                        <InputField>
+                          <Label>支撑</Label>
+                          <Input
+                            value={opinion.support}
+                            onChange={(e) => handleOpinionEdit(variety.id, opIndex, 'support', e.target.value)}
+                            style={{ fontSize: '12px', padding: '5px 8px' }}
+                          />
+                        </InputField>
+                        <InputField>
+                          <Label>压力</Label>
+                          <Input
+                            value={opinion.resistance}
+                            onChange={(e) => handleOpinionEdit(variety.id, opIndex, 'resistance', e.target.value)}
+                            style={{ fontSize: '12px', padding: '5px 8px' }}
+                          />
+                        </InputField>
+                      </InputGroup>
+                      <InputField style={{ marginTop: '8px' }}>
+                        <Label>观点逻辑</Label>
+                        <Input
+                          value={opinion.logic}
+                          onChange={(e) => handleOpinionEdit(variety.id, opIndex, 'logic', e.target.value)}
+                          style={{ fontSize: '12px', padding: '5px 8px' }}
+                        />
+                      </InputField>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </VarietyConfigCard>
         ))}
       </VarietyConfigList>

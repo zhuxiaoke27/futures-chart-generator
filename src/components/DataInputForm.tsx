@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import ExcelUploader from './ExcelUploader';
 
@@ -152,6 +152,22 @@ const DataInputForm: React.FC<DataInputFormProps> = ({ onDataChange }) => {
     }
   ]);
   const [uploadError, setUploadError] = useState<string>('');
+  const [justImported, setJustImported] = useState<boolean>(false);
+
+  // 手动输入区域的ref，用于滚动定位
+  const manualInputRef = useRef<HTMLDivElement>(null);
+
+  // 当导入数据后，自动滚动到手动输入区域
+  useEffect(() => {
+    if (justImported && manualInputRef.current) {
+      manualInputRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+      // 重置标记
+      setTimeout(() => setJustImported(false), 1000);
+    }
+  }, [justImported]);
 
   // 使用 useCallback 缓存事件处理函数，避免子组件不必要的重新渲染
   const handleFuturesDataChange = useCallback((field: keyof FuturesData, value: string | number) => {
@@ -191,6 +207,8 @@ const DataInputForm: React.FC<DataInputFormProps> = ({ onDataChange }) => {
     setOpinions(importedOpinions);
     onDataChange(futuresData, importedOpinions);
     setUploadError('');
+    // 标记刚刚导入，触发滚动效果
+    setJustImported(true);
   }, [futuresData, onDataChange]);
 
   // 处理上传错误
@@ -282,8 +300,15 @@ const DataInputForm: React.FC<DataInputFormProps> = ({ onDataChange }) => {
         )}
         
         {/* 手动输入区域 */}
-        <div style={{ marginTop: '20px' }}>
-          <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#666' }}>手动输入：</h4>
+        <div ref={manualInputRef} style={{ marginTop: '20px' }}>
+          <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#666', fontWeight: 'bold' }}>
+            手动输入：
+            {justImported && (
+              <span style={{ color: '#28a745', fontSize: '12px', marginLeft: '10px' }}>
+                ✓ 已导入，可以编辑
+              </span>
+            )}
+          </h4>
           {opinions.map((opinion, index) => (
             <OpinionRow key={index}>
               <Input

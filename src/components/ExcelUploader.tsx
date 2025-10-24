@@ -315,9 +315,15 @@ const ExcelUploader: React.FC<ExcelUploaderProps> = ({ onDataImport, onError }) 
   const handleConfirmImport = () => {
     if (previewData.length > 0) {
       onDataImport(previewData);
-      setStatus({ type: 'success', message: '数据导入成功！' });
+      setStatus({ type: 'success', message: `成功导入 ${previewData.length} 条数据！数据已更新到下方手动输入区域，可以继续编辑` });
+      // 立即清除预览数据，让用户看到手动输入区域
       setPreviewData([]);
-      setTimeout(() => setStatus({ type: null, message: '' }), 3000);
+      // 清空文件输入
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      // 延迟清除状态消息
+      setTimeout(() => setStatus({ type: null, message: '' }), 5000);
     }
   };
 
