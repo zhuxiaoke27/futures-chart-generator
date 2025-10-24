@@ -162,48 +162,9 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
 
   // 使用 useMemo 缓存生成的K线数据，仅在价格变化时重新计算
   const candleData = useMemo(() => generateCandlestickData(data.currentPrice), [data.currentPrice]);
-  
-  useEffect(() => {
-    // 确保组件已挂载
-    setIsMounted(true);
-    
-    // 延迟标记图表为准备就绪，确保DOM完全渲染
-    const timer = setTimeout(() => {
-      if (containerRef.current) {
-        setChartReady(true);
-      }
-    }, 800);
-    
-    return () => {
-      clearTimeout(timer);
-      setIsMounted(false);
-    };
-  }, [data]);
-  
-  // 如果组件未挂载，不渲染图表
-  if (!isMounted) {
-    return (
-      <ChartContainer>
-        <ChartHeader>
-          <ContractInfo>
-            <ContractName>{data.contractName}{data.contractCode}</ContractName>
-            <DateInfo>{data.date} 日线</DateInfo>
-          </ContractInfo>
-          <PriceInfo>
-            <CurrentPrice>{data.currentPrice}</CurrentPrice>
-            <ChangeInfo $isPositive={data.changePercent >= 0}>
-              {data.changePercent >= 0 ? '+' : ''}{data.changeAmount} {data.changePercent}%
-            </ChangeInfo>
-          </PriceInfo>
-        </ChartHeader>
-        <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
-          加载中...
-        </div>
-      </ChartContainer>
-    );
-  }
 
   // 使用 useMemo 缓存图表数据配置，避免不必要的重新渲染
+  // 必须在所有条件判断之前调用所有Hooks
   const chartData: any = useMemo(() => ({
     datasets: [
       {
@@ -306,7 +267,48 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
     },
   }), [setChartReady]); // options 依赖 setChartReady 函数
 
+  // useEffect 必须在所有条件判断之前调用
+  useEffect(() => {
+    // 确保组件已挂载
+    setIsMounted(true);
+
+    // 延迟标记图表为准备就绪，确保DOM完全渲染
+    const timer = setTimeout(() => {
+      if (containerRef.current) {
+        setChartReady(true);
+      }
+    }, 800);
+
+    return () => {
+      clearTimeout(timer);
+      setIsMounted(false);
+    };
+  }, [data]);
+
   const isPositive = data.changePercent >= 0;
+
+  // 如果组件未挂载，显示加载状态
+  if (!isMounted) {
+    return (
+      <ChartContainer>
+        <ChartHeader>
+          <ContractInfo>
+            <ContractName>{data.contractName}{data.contractCode}</ContractName>
+            <DateInfo>{data.date} 日线</DateInfo>
+          </ContractInfo>
+          <PriceInfo>
+            <CurrentPrice>{data.currentPrice}</CurrentPrice>
+            <ChangeInfo $isPositive={isPositive}>
+              {isPositive ? '+' : ''}{data.changeAmount} {data.changePercent}%
+            </ChangeInfo>
+          </PriceInfo>
+        </ChartHeader>
+        <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
+          加载中...
+        </div>
+      </ChartContainer>
+    );
+  }
 
   return (
     <ChartContainer data-chart-ready={chartReady}>
