@@ -176,4 +176,5 @@ const OpinionTable: React.FC<OpinionTableProps> = ({ opinions }) => {
   );
 };
 
-export default OpinionTable;
+// 使用 React.memo 优化，仅在 opinions 数组变化时重新渲染
+export default React.memo(OpinionTable);

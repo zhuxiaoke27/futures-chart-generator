@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import styled from 'styled-components';
 import ExcelUploader from './ExcelUploader';
 
@@ -153,20 +153,21 @@ const DataInputForm: React.FC<DataInputFormProps> = ({ onDataChange }) => {
   ]);
   const [uploadError, setUploadError] = useState<string>('');
 
-  const handleFuturesDataChange = (field: keyof FuturesData, value: string | number) => {
+  // 使用 useCallback 缓存事件处理函数，避免子组件不必要的重新渲染
+  const handleFuturesDataChange = useCallback((field: keyof FuturesData, value: string | number) => {
     const updatedData = { ...futuresData, [field]: value };
     setFuturesData(updatedData);
     onDataChange(updatedData, opinions);
-  };
+  }, [futuresData, opinions, onDataChange]);
 
-  const handleOpinionChange = (index: number, field: keyof CompanyOpinion, value: string) => {
+  const handleOpinionChange = useCallback((index: number, field: keyof CompanyOpinion, value: string) => {
     const updatedOpinions = [...opinions];
     updatedOpinions[index] = { ...updatedOpinions[index], [field]: value };
     setOpinions(updatedOpinions);
     onDataChange(futuresData, updatedOpinions);
-  };
+  }, [futuresData, opinions, onDataChange]);
 
-  const addOpinion = () => {
+  const addOpinion = useCallback(() => {
     const newOpinion: CompanyOpinion = {
       company: '',
       direction: '',
@@ -177,25 +178,25 @@ const DataInputForm: React.FC<DataInputFormProps> = ({ onDataChange }) => {
     const updatedOpinions = [...opinions, newOpinion];
     setOpinions(updatedOpinions);
     onDataChange(futuresData, updatedOpinions);
-  };
+  }, [futuresData, opinions, onDataChange]);
 
-  const removeOpinion = (index: number) => {
+  const removeOpinion = useCallback((index: number) => {
     const updatedOpinions = opinions.filter((_, i) => i !== index);
     setOpinions(updatedOpinions);
     onDataChange(futuresData, updatedOpinions);
-  };
+  }, [futuresData, opinions, onDataChange]);
 
   // 处理Excel批量导入
-  const handleExcelImport = (importedOpinions: CompanyOpinion[]) => {
+  const handleExcelImport = useCallback((importedOpinions: CompanyOpinion[]) => {
     setOpinions(importedOpinions);
     onDataChange(futuresData, importedOpinions);
     setUploadError('');
-  };
+  }, [futuresData, onDataChange]);
 
   // 处理上传错误
-  const handleUploadError = (error: string) => {
+  const handleUploadError = useCallback((error: string) => {
     setUploadError(error);
-  };
+  }, []);
 
   return (
     <FormContainer>
