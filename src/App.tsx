@@ -71,6 +71,107 @@ const ExportSection = styled.div`
   backdrop-filter: blur(10px);
 `;
 
+// 单品种页面组件
+interface SingleVarietyPageProps {
+  futuresData: FuturesData;
+  opinions: CompanyOpinion[];
+  onDataChange: (data: FuturesData, opinions: CompanyOpinion[]) => void;
+}
+
+const SingleVarietyPage: React.FC<SingleVarietyPageProps> = React.memo(({
+  futuresData,
+  opinions,
+  onDataChange
+}) => (
+  <AppContainer>
+    <Header>
+      <Title>期货策略长图生成器</Title>
+      <Subtitle>自动化生成专业的期货分析图表</Subtitle>
+    </Header>
+
+    <ContentContainer>
+      <LeftPanel>
+        <DataInputForm
+          futuresData={futuresData}
+          opinions={opinions}
+          onDataChange={onDataChange}
+        />
+        <ExportSection>
+          <ExportButton
+            targetId="futures-info-card"
+            filename="futures-strategy-chart"
+          />
+        </ExportSection>
+      </LeftPanel>
+
+      <RightPanel>
+        <FuturesInfoCard data={futuresData} opinions={opinions} />
+      </RightPanel>
+    </ContentContainer>
+  </AppContainer>
+));
+SingleVarietyPage.displayName = 'SingleVarietyPage';
+
+// 多品种页面组件
+interface MultiVarietyPageProps {
+  varieties: VarietyData[];
+  onVarietiesChange: (varieties: VarietyData[]) => void;
+}
+
+const MultiVarietyPage: React.FC<MultiVarietyPageProps> = React.memo(({
+  varieties,
+  onVarietiesChange
+}) => (
+  <div style={{
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    padding: '20px',
+    fontFamily: 'PingFang SC, Microsoft YaHei, sans-serif'
+  }}>
+    <div style={{
+      textAlign: 'center',
+      marginBottom: '20px',
+      color: 'white'
+    }}>
+      <h1 style={{
+        fontSize: '32px',
+        fontWeight: 'bold',
+        margin: '0 0 10px 0',
+        textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)'
+      }}>多品种期货分析</h1>
+      <p style={{
+        fontSize: '16px',
+        margin: '0 0 20px 0',
+        opacity: 0.9
+      }}>同时分析多个期货品种的投资机会</p>
+    </div>
+
+    <MultiVarietyChart
+      varieties={varieties}
+      onVarietiesChange={onVarietiesChange}
+    />
+
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: '20px',
+      background: 'rgba(255, 255, 255, 0.1)',
+      borderRadius: '12px',
+      backdropFilter: 'blur(10px)',
+      marginTop: '20px',
+      maxWidth: '1600px',
+      margin: '20px auto 0'
+    }}>
+      <ExportButton
+        targetId="multi-variety-chart"
+        filename="multi-variety-analysis"
+      />
+    </div>
+  </div>
+));
+MultiVarietyPage.displayName = 'MultiVarietyPage';
+
 function App() {
   const [futuresData, setFuturesData] = useState<FuturesData>({
     contractName: '玻璃',
@@ -116,93 +217,29 @@ function App() {
     setVarieties(newVarieties);
   }, []);
 
-  // 单品种页面组件
-  const SingleVarietyPage = () => (
-    <AppContainer>
-      <Header>
-        <Title>期货策略长图生成器</Title>
-        <Subtitle>自动化生成专业的期货分析图表</Subtitle>
-      </Header>
-      
-      <ContentContainer>
-        <LeftPanel>
-          <DataInputForm
-            futuresData={futuresData}
-            opinions={opinions}
-            onDataChange={handleDataChange}
-          />
-          <ExportSection>
-            <ExportButton
-              targetId="futures-info-card"
-              filename="futures-strategy-chart"
-            />
-          </ExportSection>
-        </LeftPanel>
-
-        <RightPanel>
-          <FuturesInfoCard data={futuresData} opinions={opinions} />
-        </RightPanel>
-      </ContentContainer>
-    </AppContainer>
-  );
-
-  // 多品种页面组件
-  const MultiVarietyPage = () => (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-      padding: '20px',
-      fontFamily: 'PingFang SC, Microsoft YaHei, sans-serif'
-    }}>
-      <div style={{
-        textAlign: 'center',
-        marginBottom: '20px',
-        color: 'white'
-      }}>
-        <h1 style={{
-          fontSize: '32px',
-          fontWeight: 'bold',
-          margin: '0 0 10px 0',
-          textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)'
-        }}>多品种期货分析</h1>
-        <p style={{
-          fontSize: '16px',
-          margin: '0 0 20px 0',
-          opacity: 0.9
-        }}>同时分析多个期货品种的投资机会</p>
-      </div>
-      
-      <MultiVarietyChart 
-        varieties={varieties}
-        onVarietiesChange={handleVarietiesChange}
-      />
-      
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '20px',
-        background: 'rgba(255, 255, 255, 0.1)',
-        borderRadius: '12px',
-        backdropFilter: 'blur(10px)',
-        marginTop: '20px',
-        maxWidth: '1600px',
-        margin: '20px auto 0'
-      }}>
-        <ExportButton 
-          targetId="multi-variety-chart" 
-          filename="multi-variety-analysis"
-        />
-      </div>
-    </div>
-  );
-
   return (
     <Router>
         <Routes>
           <Route path="/" element={<OverviewPage onTemplateSelect={handleTemplateSelect} />} />
-          <Route path="/single" element={<SingleVarietyPage />} />
-          <Route path="/multi" element={<MultiVarietyPage />} />
+          <Route
+            path="/single"
+            element={
+              <SingleVarietyPage
+                futuresData={futuresData}
+                opinions={opinions}
+                onDataChange={handleDataChange}
+              />
+            }
+          />
+          <Route
+            path="/multi"
+            element={
+              <MultiVarietyPage
+                varieties={varieties}
+                onVarietiesChange={handleVarietiesChange}
+              />
+            }
+          />
         </Routes>
       </Router>
   );
