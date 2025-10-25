@@ -21,6 +21,8 @@ interface CompanyOpinion {
 }
 
 interface DataInputFormProps {
+  futuresData: FuturesData;
+  opinions: CompanyOpinion[];
   onDataChange: (data: FuturesData, opinions: CompanyOpinion[]) => void;
 }
 
@@ -124,33 +126,7 @@ const RemoveButton = styled.button`
   }
 `;
 
-const DataInputForm: React.FC<DataInputFormProps> = ({ onDataChange }) => {
-  const [futuresData, setFuturesData] = useState<FuturesData>({
-    contractName: '玻璃',
-    contractCode: '2505',
-    currentPrice: 1163,
-    changePercent: 1.22,
-    changeAmount: 14,
-    date: '2025/03/14',
-    mainPrice: 1163
-  });
-
-  const [opinions, setOpinions] = useState<CompanyOpinion[]>([
-    {
-      company: '平安期货',
-      direction: '偏多',
-      support: '665',
-      resistance: '690',
-      logic: '特朗普关税政策提振，黄金避险需求上升'
-    },
-    {
-      company: '紫金天风',
-      direction: '偏多',
-      support: '674-678',
-      resistance: '690-694',
-      logic: '基本面：黄金短期调整，黄金中长期多头逻辑未变'
-    }
-  ]);
+const DataInputForm: React.FC<DataInputFormProps> = ({ futuresData, opinions, onDataChange }) => {
   const [uploadError, setUploadError] = useState<string>('');
   const [justImported, setJustImported] = useState<boolean>(false);
 
@@ -172,14 +148,12 @@ const DataInputForm: React.FC<DataInputFormProps> = ({ onDataChange }) => {
   // 使用 useCallback 缓存事件处理函数，避免子组件不必要的重新渲染
   const handleFuturesDataChange = useCallback((field: keyof FuturesData, value: string | number) => {
     const updatedData = { ...futuresData, [field]: value };
-    setFuturesData(updatedData);
     onDataChange(updatedData, opinions);
   }, [futuresData, opinions, onDataChange]);
 
   const handleOpinionChange = useCallback((index: number, field: keyof CompanyOpinion, value: string) => {
     const updatedOpinions = [...opinions];
     updatedOpinions[index] = { ...updatedOpinions[index], [field]: value };
-    setOpinions(updatedOpinions);
     onDataChange(futuresData, updatedOpinions);
   }, [futuresData, opinions, onDataChange]);
 
@@ -192,19 +166,16 @@ const DataInputForm: React.FC<DataInputFormProps> = ({ onDataChange }) => {
       logic: ''
     };
     const updatedOpinions = [...opinions, newOpinion];
-    setOpinions(updatedOpinions);
     onDataChange(futuresData, updatedOpinions);
   }, [futuresData, opinions, onDataChange]);
 
   const removeOpinion = useCallback((index: number) => {
     const updatedOpinions = opinions.filter((_, i) => i !== index);
-    setOpinions(updatedOpinions);
     onDataChange(futuresData, updatedOpinions);
   }, [futuresData, opinions, onDataChange]);
 
   // 处理Excel批量导入
   const handleExcelImport = useCallback((importedOpinions: CompanyOpinion[]) => {
-    setOpinions(importedOpinions);
     onDataChange(futuresData, importedOpinions);
     setUploadError('');
     // 标记刚刚导入，触发滚动效果

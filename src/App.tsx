@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router';
 import styled from 'styled-components';
 import DataInputForm, { FuturesData, CompanyOpinion } from './components/DataInputForm';
@@ -102,19 +102,19 @@ function App() {
   const [varieties, setVarieties] = useState<VarietyData[]>([]);
   // const [selectedTemplate, setSelectedTemplate] = useState<'single' | 'multi' | null>(null);
 
-  const handleDataChange = (newData: FuturesData, newOpinions: CompanyOpinion[]) => {
+  const handleDataChange = useCallback((newData: FuturesData, newOpinions: CompanyOpinion[]) => {
     setFuturesData(newData);
     setOpinions(newOpinions);
-  };
+  }, []);
 
-  const handleTemplateSelect = (template: 'single' | 'multi') => {
+  const handleTemplateSelect = useCallback((template: 'single' | 'multi') => {
     // setSelectedTemplate(template);
     console.log('Template selected:', template);
-  };
+  }, []);
 
-  const handleVarietiesChange = (newVarieties: VarietyData[]) => {
+  const handleVarietiesChange = useCallback((newVarieties: VarietyData[]) => {
     setVarieties(newVarieties);
-  };
+  }, []);
 
   // 单品种页面组件
   const SingleVarietyPage = () => (
@@ -126,15 +126,19 @@ function App() {
       
       <ContentContainer>
         <LeftPanel>
-          <DataInputForm onDataChange={handleDataChange} />
+          <DataInputForm
+            futuresData={futuresData}
+            opinions={opinions}
+            onDataChange={handleDataChange}
+          />
           <ExportSection>
-            <ExportButton 
-              targetId="futures-info-card" 
+            <ExportButton
+              targetId="futures-info-card"
               filename="futures-strategy-chart"
             />
           </ExportSection>
         </LeftPanel>
-        
+
         <RightPanel>
           <FuturesInfoCard data={futuresData} opinions={opinions} />
         </RightPanel>
