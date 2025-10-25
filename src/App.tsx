@@ -35,16 +35,18 @@ const Subtitle = styled.p`
 `;
 
 const ContentContainer = styled.div`
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
+  padding: 0 20px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(500px, 1fr) minmax(400px, 600px);
   gap: 30px;
   align-items: start;
-  
-  @media (max-width: 1024px) {
+
+  @media (max-width: 1200px) {
     grid-template-columns: 1fr;
     gap: 20px;
+    padding: 0 15px;
   }
 `;
 

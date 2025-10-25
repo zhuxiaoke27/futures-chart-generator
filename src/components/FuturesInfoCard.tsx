@@ -10,7 +10,8 @@ interface FuturesInfoCardProps {
 }
 
 const CardContainer = styled.div`
-  width: 600px;
+  width: 100%;
+  max-width: 600px;
   min-height: fit-content;
   background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
   border-radius: 12px;
@@ -20,7 +21,7 @@ const CardContainer = styled.div`
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
   overflow: hidden;
   position: relative;
-  
+
   /* 确保导出时的可见性 */
   opacity: 1;
   visibility: visible;
