@@ -181,8 +181,7 @@ function App() {
     currentPrice: 1163,
     changePercent: 1.22,
     changeAmount: 14,
-    date: '2025/03/14',
-    mainPrice: 1163
+    date: '2025/03/14'
   });
 
   const [opinions, setOpinions] = useState<CompanyOpinion[]>([

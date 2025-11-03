@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useMemo, useState } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -20,6 +20,8 @@ import {
 import 'chartjs-adapter-luxon';
 import styled from 'styled-components';
 import { FuturesData } from './DataInputForm';
+import { getKlineDataByContractName } from '../services/futuresApi';
+import { KlineDataPoint } from '../types/futures';
 
 ChartJS.register(
   CategoryScale,
@@ -115,53 +117,17 @@ const DateInfo = styled.span`
   color: #999;
 `;
 
-// 生成模拟K线数据
-const generateCandlestickData = (currentPrice: number) => {
-  const data = [];
-  const baseDate = new Date('2024-12-25');
-  
-  // 生成30天的数据
-  for (let i = 29; i >= 0; i--) {
-    const date = new Date(baseDate);
-    date.setDate(date.getDate() - i);
-    
-    // 生成价格数据，围绕当前价格波动
-    const variation = (Math.random() - 0.5) * currentPrice * 0.1;
-    const basePrice = currentPrice + variation;
-    const volatility = currentPrice * 0.02;
-    
-    const open = basePrice + (Math.random() - 0.5) * volatility;
-    const close = basePrice + (Math.random() - 0.5) * volatility;
-    const high = Math.max(open, close) + Math.random() * volatility * 0.5;
-    const low = Math.min(open, close) - Math.random() * volatility * 0.5;
-    
-    data.push({
-      x: date.getTime(),
-      o: open,
-      h: high,
-      l: low,
-      c: close
-    });
-  }
-  
-  // 最后一个数据点设为当前价格
-  const lastData = data[data.length - 1];
-  lastData.c = currentPrice;
-  lastData.o = currentPrice + (Math.random() - 0.5) * 10;
-  lastData.h = Math.max(lastData.o, lastData.c) + Math.random() * 5;
-  lastData.l = Math.min(lastData.o, lastData.c) - Math.random() * 5;
-  
-  return data;
-};
+// K线数据已从API获取，不再需要生成模拟数据
 
 const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
   const chartRef = useRef<any>(null);
-  const [chartReady, setChartReady] = React.useState(false);
+  const [chartReady, setChartReady] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isMounted, setIsMounted] = React.useState(false);
 
-  // 使用 useMemo 缓存生成的K线数据，仅在价格变化时重新计算
-  const candleData = useMemo(() => generateCandlestickData(data.currentPrice), [data.currentPrice]);
+  // 新增状态：K线数据、加载状态、错误信息
+  const [candleData, setCandleData] = useState<KlineDataPoint[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // 使用 useMemo 缓存图表数据配置，避免不必要的重新渲染
   // 必须在所有条件判断之前调用所有Hooks
@@ -267,28 +233,62 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
     },
   }), [setChartReady]); // options 依赖 setChartReady 函数
 
-  // useEffect 必须在所有条件判断之前调用
+  // useEffect: 获取K线数据
   useEffect(() => {
-    // 确保组件已挂载
-    setIsMounted(true);
+    let isCancelled = false;
 
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        console.log('开始获取K线数据，合约名称:', data.contractName);
+
+        // 调用API获取真实K线数据
+        const klineData = await getKlineDataByContractName(data.contractName);
+
+        if (!isCancelled) {
+          setCandleData(klineData);
+          console.log('K线数据获取成功，数据点数量:', klineData.length);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          const errorMsg = err instanceof Error ? err.message : '未知错误';
+          setError(errorMsg);
+          console.error('获取K线数据失败:', errorMsg);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [data.contractName]); // 仅在合约名称变化时重新获取
+
+  // useEffect: 管理图表就绪状态
+  useEffect(() => {
     // 延迟标记图表为准备就绪，确保DOM完全渲染
     const timer = setTimeout(() => {
-      if (containerRef.current) {
+      if (containerRef.current && candleData.length > 0) {
         setChartReady(true);
       }
     }, 800);
 
     return () => {
       clearTimeout(timer);
-      setIsMounted(false);
     };
-  }, [data]);
+  }, [candleData]);
 
   const isPositive = data.changePercent >= 0;
 
-  // 如果组件未挂载，显示加载状态
-  if (!isMounted) {
+  // 渲染加载状态
+  if (isLoading) {
     return (
       <ChartContainer>
         <ChartHeader>
@@ -303,8 +303,80 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
             </ChangeInfo>
           </PriceInfo>
         </ChartHeader>
-        <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
-          加载中...
+        <div style={{
+          height: '200px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#666',
+          fontSize: '14px'
+        }}>
+          ⏳ 正在加载K线数据...
+        </div>
+      </ChartContainer>
+    );
+  }
+
+  // 渲染错误状态
+  if (error) {
+    return (
+      <ChartContainer>
+        <ChartHeader>
+          <ContractInfo>
+            <ContractName>{data.contractName}{data.contractCode}</ContractName>
+            <DateInfo>{data.date} 日线</DateInfo>
+          </ContractInfo>
+          <PriceInfo>
+            <CurrentPrice>{data.currentPrice}</CurrentPrice>
+            <ChangeInfo $isPositive={isPositive}>
+              {isPositive ? '+' : ''}{data.changeAmount} {data.changePercent}%
+            </ChangeInfo>
+          </PriceInfo>
+        </ChartHeader>
+        <div style={{
+          height: '200px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#dc3545',
+          fontSize: '14px',
+          padding: '20px',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '32px', marginBottom: '10px' }}>❌</div>
+          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>无法获取K线数据</div>
+          <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.5' }}>{error}</div>
+        </div>
+      </ChartContainer>
+    );
+  }
+
+  // 如果数据为空
+  if (candleData.length === 0) {
+    return (
+      <ChartContainer>
+        <ChartHeader>
+          <ContractInfo>
+            <ContractName>{data.contractName}{data.contractCode}</ContractName>
+            <DateInfo>{data.date} 日线</DateInfo>
+          </ContractInfo>
+          <PriceInfo>
+            <CurrentPrice>{data.currentPrice}</CurrentPrice>
+            <ChangeInfo $isPositive={isPositive}>
+              {isPositive ? '+' : ''}{data.changeAmount} {data.changePercent}%
+            </ChangeInfo>
+          </PriceInfo>
+        </ChartHeader>
+        <div style={{
+          height: '200px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#999',
+          fontSize: '14px'
+        }}>
+          暂无K线数据
         </div>
       </ChartContainer>
     );

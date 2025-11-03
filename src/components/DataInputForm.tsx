@@ -1,15 +1,15 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import ExcelUploader from './ExcelUploader';
+import { calculateFuturesData } from '../services/futuresDataCalculator';
 
 interface FuturesData {
-  contractName: string;
-  contractCode: string;
-  currentPrice: number;
-  changePercent: number;
-  changeAmount: number;
-  date: string;
-  mainPrice: number;
+  contractName: string;      // 用户输入的合约名称
+  contractCode: string;       // 从API获取
+  currentPrice: number;       // 从K线数据计算
+  changePercent: number;      // 从K线数据计算
+  changeAmount: number;       // 从K线数据计算
+  date: string;              // 当天日期
 }
 
 interface CompanyOpinion {
@@ -129,9 +129,14 @@ const RemoveButton = styled.button`
 const DataInputForm: React.FC<DataInputFormProps> = ({ futuresData, opinions, onDataChange }) => {
   const [uploadError, setUploadError] = useState<string>('');
   const [justImported, setJustImported] = useState<boolean>(false);
+  const [isLoadingData, setIsLoadingData] = useState<boolean>(false);
+  const [dataError, setDataError] = useState<string>('');
 
   // 手动输入区域的ref，用于滚动定位
   const manualInputRef = useRef<HTMLDivElement>(null);
+
+  // 用于防抖的timer
+  const fetchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 当导入数据后，自动滚动到手动输入区域
   useEffect(() => {
@@ -145,12 +150,51 @@ const DataInputForm: React.FC<DataInputFormProps> = ({ futuresData, opinions, on
     }
   }, [justImported]);
 
-  // 使用 useCallback 缓存事件处理函数，避免子组件不必要的重新渲染
-  const handleFuturesDataChange = useCallback((field: keyof FuturesData, value: string | number) => {
-    const updatedData = { ...futuresData, [field]: value };
-    onDataChange(updatedData, opinions);
-  }, [futuresData, opinions, onDataChange]);
+  // 自动获取期货数据
+  const fetchFuturesData = useCallback(async (contractName: string) => {
+    // 清除之前的timer
+    if (fetchTimerRef.current) {
+      clearTimeout(fetchTimerRef.current);
+    }
 
+    // 如果合约名称为空，不执行
+    if (!contractName || contractName.trim() === '') {
+      return;
+    }
+
+    // 防抖：延迟1秒后再执行
+    fetchTimerRef.current = setTimeout(async () => {
+      setIsLoadingData(true);
+      setDataError('');
+
+      try {
+        console.log('开始获取期货数据:', contractName);
+        const calculatedData = await calculateFuturesData(contractName);
+
+        // 更新期货数据
+        onDataChange(calculatedData, opinions);
+        console.log('期货数据获取成功');
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : '获取数据失败';
+        setDataError(errorMsg);
+        console.error('获取期货数据失败:', errorMsg);
+      } finally {
+        setIsLoadingData(false);
+      }
+    }, 1000);
+  }, [opinions, onDataChange]);
+
+  // 处理合约名称变化
+  const handleContractNameChange = useCallback((value: string) => {
+    // 立即更新合约名称（其他字段保持不变）
+    const updatedData = { ...futuresData, contractName: value };
+    onDataChange(updatedData, opinions);
+
+    // 触发自动获取数据
+    fetchFuturesData(value);
+  }, [futuresData, opinions, onDataChange, fetchFuturesData]);
+
+  // 处理观点变化
   const handleOpinionChange = useCallback((index: number, field: keyof CompanyOpinion, value: string) => {
     const updatedOpinions = [...opinions];
     updatedOpinions[index] = { ...updatedOpinions[index], [field]: value };
@@ -191,69 +235,92 @@ const DataInputForm: React.FC<DataInputFormProps> = ({ futuresData, opinions, on
     <FormContainer>
       <FormSection>
         <SectionTitle>期货基本信息</SectionTitle>
-        <InputGroup>
-          <InputField>
-            <Label>合约名称</Label>
-            <Input
-              type="text"
-              value={futuresData.contractName}
-              onChange={(e) => handleFuturesDataChange('contractName', e.target.value)}
-            />
-          </InputField>
-          <InputField>
-            <Label>合约代码</Label>
-            <Input
-              type="text"
-              value={futuresData.contractCode}
-              onChange={(e) => handleFuturesDataChange('contractCode', e.target.value)}
-            />
-          </InputField>
-          <InputField>
-            <Label>当前价格</Label>
-            <Input
-              type="number"
-              step="0.01"
-              value={futuresData.currentPrice}
-              onChange={(e) => handleFuturesDataChange('currentPrice', parseFloat(e.target.value))}
-            />
-          </InputField>
-          <InputField>
-            <Label>涨跌幅(%)</Label>
-            <Input
-              type="number"
-              step="0.01"
-              value={futuresData.changePercent}
-              onChange={(e) => handleFuturesDataChange('changePercent', parseFloat(e.target.value))}
-            />
-          </InputField>
-          <InputField>
-            <Label>涨跌额</Label>
-            <Input
-              type="number"
-              step="0.01"
-              value={futuresData.changeAmount}
-              onChange={(e) => handleFuturesDataChange('changeAmount', parseFloat(e.target.value))}
-            />
-          </InputField>
-          <InputField>
-            <Label>日期</Label>
-            <Input
-              type="text"
-              value={futuresData.date}
-              onChange={(e) => handleFuturesDataChange('date', e.target.value)}
-            />
-          </InputField>
 
+        {/* 用户输入区域 */}
+        <div style={{ marginBottom: '20px', padding: '15px', background: 'white', borderRadius: '8px' }}>
           <InputField>
-            <Label>主力最新价</Label>
+            <Label style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+              合约名称
+              {isLoadingData && <span style={{ marginLeft: '10px', color: '#007bff', fontSize: '14px' }}>⏳ 正在获取数据...</span>}
+            </Label>
             <Input
-              type="number"
-              step="0.01"
-              value={futuresData.mainPrice}
-              onChange={(e) => handleFuturesDataChange('mainPrice', parseFloat(e.target.value))}
+              type="text"
+              placeholder="请输入合约名称，例如：玻璃、螺纹钢、棉花"
+              value={futuresData.contractName}
+              onChange={(e) => handleContractNameChange(e.target.value)}
+              style={{ fontSize: '16px', padding: '12px' }}
             />
+            {dataError && (
+              <div style={{ color: '#dc3545', fontSize: '12px', marginTop: '8px' }}>
+                ❌ {dataError}
+              </div>
+            )}
           </InputField>
-        </InputGroup>
+        </div>
+
+        {/* 自动获取的数据展示区域 */}
+        <div style={{ padding: '15px', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+          <div style={{ fontSize: '14px', color: '#666', marginBottom: '10px', fontWeight: 'bold' }}>
+            📊 自动获取的数据：
+          </div>
+          <InputGroup>
+            <InputField>
+              <Label>合约代码</Label>
+              <Input
+                type="text"
+                value={futuresData.contractCode}
+                disabled
+                style={{ background: '#e9ecef', cursor: 'not-allowed' }}
+              />
+            </InputField>
+            <InputField>
+              <Label>当前价格</Label>
+              <Input
+                type="text"
+                value={futuresData.currentPrice || '-'}
+                disabled
+                style={{ background: '#e9ecef', cursor: 'not-allowed' }}
+              />
+            </InputField>
+            <InputField>
+              <Label>涨跌幅(%)</Label>
+              <Input
+                type="text"
+                value={futuresData.changePercent || '-'}
+                disabled
+                style={{
+                  background: '#e9ecef',
+                  cursor: 'not-allowed',
+                  color: futuresData.changePercent >= 0 ? '#ff4444' : '#00aa00',
+                  fontWeight: 'bold'
+                }}
+              />
+            </InputField>
+            <InputField>
+              <Label>涨跌额</Label>
+              <Input
+                type="text"
+                value={futuresData.changeAmount || '-'}
+                disabled
+                style={{
+                  background: '#e9ecef',
+                  cursor: 'not-allowed',
+                  color: futuresData.changeAmount >= 0 ? '#ff4444' : '#00aa00',
+                  fontWeight: 'bold'
+                }}
+              />
+            </InputField>
+            <InputField>
+              <Label>日期</Label>
+              <Input
+                type="text"
+                value={futuresData.date}
+                disabled
+                style={{ background: '#e9ecef', cursor: 'not-allowed' }}
+              />
+            </InputField>
+          </InputGroup>
+        </div>
       </FormSection>
 
       <FormSection>
