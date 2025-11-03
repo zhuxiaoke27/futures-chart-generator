@@ -8,7 +8,6 @@ import {
   Title,
   Tooltip,
   Legend,
-  TimeScale,
 } from 'chart.js';
 import { Chart } from 'react-chartjs-2';
 import {
@@ -17,7 +16,6 @@ import {
   OhlcController,
   OhlcElement,
 } from 'chartjs-chart-financial';
-import 'chartjs-adapter-luxon';
 import styled from 'styled-components';
 import { FuturesData } from './DataInputForm';
 import { getKlineDataByContractName } from '../services/futuresApi';
@@ -26,7 +24,6 @@ import { KlineDataPoint } from '../types/futures';
 ChartJS.register(
   CategoryScale,
   LinearScale,
-  TimeScale,
   PointElement,
   LineElement,
   Title,
@@ -129,13 +126,34 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 转换K线数据：从时间戳格式转为索引格式（去除时间间隙）
+  const { indexedData, labels } = useMemo(() => {
+    const indexedData = candleData.map((item, index) => ({
+      x: index,  // 使用索引代替时间戳
+      o: item.o,
+      h: item.h,
+      l: item.l,
+      c: item.c,
+      timestamp: item.x  // 保留原始时间戳用于tooltip显示
+    }));
+
+    // 生成日期标签
+    const labels = candleData.map(item => {
+      const date = new Date(item.x);
+      return `${date.getMonth() + 1}/${date.getDate()}`;
+    });
+
+    return { indexedData, labels };
+  }, [candleData]);
+
   // 使用 useMemo 缓存图表数据配置，避免不必要的重新渲染
   // 必须在所有条件判断之前调用所有Hooks
   const chartData: any = useMemo(() => ({
+    labels: labels,  // 添加labels用于X轴显示
     datasets: [
       {
         label: 'K线图',
-        data: candleData,
+        data: indexedData,
         color: {
           up: '#ff4444',
           down: '#00aa00',
@@ -143,7 +161,7 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
         },
       }
     ],
-  }), [candleData]);
+  }), [indexedData, labels]);
 
   // 使用 useMemo 缓存图表选项配置
   const options: any = useMemo(() => ({
@@ -173,6 +191,15 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
         borderColor: '#ddd',
         borderWidth: 1,
         callbacks: {
+          title: function(context: any) {
+            // 显示日期而不是索引
+            const point = context[0].raw;
+            if (point.timestamp) {
+              const date = new Date(point.timestamp);
+              return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+            }
+            return context[0].label;
+          },
           label: function(context: any) {
             const point = context.raw;
             return [
@@ -192,13 +219,7 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
     },
     scales: {
       x: {
-        type: 'time',
-        time: {
-          unit: 'day',
-          displayFormats: {
-            day: 'MM/dd'
-          }
-        },
+        type: 'category',  // 使用category类型，基于索引显示
         display: true,
         grid: {
           display: true,
@@ -206,6 +227,9 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
         },
         ticks: {
           color: '#666',
+          maxRotation: 0,  // 防止标签旋转
+          autoSkip: true,  // 自动跳过标签以避免拥挤
+          autoSkipPadding: 10,
           font: {
             size: 11,
           },
