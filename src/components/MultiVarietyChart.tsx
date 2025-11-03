@@ -340,8 +340,7 @@ const defaultVarieties: VarietyData[] = [
       currentPrice: 1163,
       changePercent: 1.22,
       changeAmount: 14,
-      date: '2025/03/14',
-      mainPrice: 1163
+      date: '2025/03/14'
     },
     opinions: [
       {
@@ -361,8 +360,7 @@ const defaultVarieties: VarietyData[] = [
       currentPrice: 3850,
       changePercent: -0.85,
       changeAmount: -33,
-      date: '2025/03/14',
-      mainPrice: 3850
+      date: '2025/03/14'
     },
     opinions: [
       {
@@ -382,8 +380,7 @@ const defaultVarieties: VarietyData[] = [
       currentPrice: 74500,
       changePercent: 2.15,
       changeAmount: 1570,
-      date: '2025/03/14',
-      mainPrice: 74500
+      date: '2025/03/14'
     },
     opinions: [
       {
@@ -403,8 +400,7 @@ const defaultVarieties: VarietyData[] = [
       currentPrice: 520,
       changePercent: -1.25,
       changeAmount: -6.6,
-      date: '2025/03/14',
-      mainPrice: 520
+      date: '2025/03/14'
     },
     opinions: [
       {
@@ -424,8 +420,7 @@ const defaultVarieties: VarietyData[] = [
       currentPrice: 680,
       changePercent: 0.75,
       changeAmount: 5.1,
-      date: '2025/03/14',
-      mainPrice: 680
+      date: '2025/03/14'
     },
     opinions: [
       {
@@ -535,8 +530,7 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
         currentPrice: 0,
         changePercent: 0,
         changeAmount: 0,
-        date: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/'),
-        mainPrice: 0
+        date: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/')
       },
       opinions: []
     };
