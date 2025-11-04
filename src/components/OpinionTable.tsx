@@ -43,7 +43,7 @@ const HeaderCell = styled.th`
   }
   
   &:nth-child(2) {
-    width: 60px;
+    width: 80px;
   }
   
   &:nth-child(3) {
@@ -119,6 +119,9 @@ const DirectionBadge = styled.span<{ direction: string }>`
   font-size: 12px;
   font-weight: 500;
   color: white;
+  white-space: nowrap;
+  min-width: 60px;
+  text-align: center;
   background: ${props => {
     if (props.direction.includes('多')) return '#dc3545';
     if (props.direction.includes('空')) return '#28a745';
