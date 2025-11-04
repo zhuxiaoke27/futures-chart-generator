@@ -101,7 +101,8 @@ const SingleVarietyPage: React.FC<SingleVarietyPageProps> = React.memo(({
         <ExportSection>
           <ExportButton
             targetId="futures-info-card"
-            filename="futures-strategy-chart"
+            varietyName={futuresData.contractName}
+            isMultiVariety={false}
           />
         </ExportSection>
       </LeftPanel>
@@ -167,7 +168,7 @@ const MultiVarietyPage: React.FC<MultiVarietyPageProps> = React.memo(({
     }}>
       <ExportButton
         targetId="multi-variety-chart"
-        filename="multi-variety-analysis"
+        isMultiVariety={true}
       />
     </div>
   </div>

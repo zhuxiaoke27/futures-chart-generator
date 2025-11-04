@@ -5,6 +5,8 @@ import styled from 'styled-components';
 interface ExportButtonProps {
   targetId: string;
   filename?: string;
+  varietyName?: string;
+  isMultiVariety?: boolean;
 }
 
 const ExportContainer = styled.div`
@@ -85,9 +87,11 @@ const StatusMessage = styled.div<{ type: 'success' | 'error' | 'info' }>`
   }};
 `;
 
-const ExportButton: React.FC<ExportButtonProps> = ({ 
-  targetId, 
-  filename = 'futures-strategy-chart' 
+const ExportButton: React.FC<ExportButtonProps> = ({
+  targetId,
+  filename = 'futures-strategy-chart',
+  varietyName,
+  isMultiVariety = false
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [status, setStatus] = useState<{
@@ -348,9 +352,27 @@ const ExportButton: React.FC<ExportButtonProps> = ({
         throw new Error('生成的图片尺寸为0，请检查目标元素是否可见');
       }
 
+      // 生成文件名
+      const generateFilename = () => {
+        // 如果传入了 varietyName 或 isMultiVariety，使用新的命名规则
+        if (varietyName || isMultiVariety) {
+          const today = new Date();
+          const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+          if (isMultiVariety) {
+            return `${dateStr}盘前策略汇总`;
+          } else if (varietyName) {
+            return `${dateStr}${varietyName}盘前策略`;
+          }
+        }
+
+        // 回退到原有逻辑（向后兼容）
+        return `${filename}-${new Date().toISOString().slice(0, 10)}`;
+      };
+
       // 创建下载链接
       const link = document.createElement('a');
-      link.download = `${filename}-${new Date().toISOString().slice(0, 10)}.png`;
+      link.download = `${generateFilename()}.png`;
       link.href = canvas.toDataURL('image/png', 1.0);
       
       // 触发下载

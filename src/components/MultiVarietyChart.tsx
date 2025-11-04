@@ -4,6 +4,7 @@ import { FuturesData, CompanyOpinion } from './DataInputForm';
 import CandlestickChart from './CandlestickChart';
 import OpinionTable from './OpinionTable';
 import ExcelUploader from './ExcelUploader';
+import MultiVarietyExcelUploader from './MultiVarietyExcelUploader';
 import { calculateFuturesData } from '../services/futuresDataCalculator';
 
 interface VarietyData {
@@ -390,7 +391,7 @@ const defaultVarieties: VarietyData[] = [
   {
     id: '3',
     futuresData: {
-      contractName: '铜',
+      contractName: '沪铜',
       contractCode: '',
       currentPrice: 0,
       changePercent: 0,
@@ -629,6 +630,18 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
     setLocalVarieties(prev => prev.filter(variety => variety.id !== varietyId));
   }, []);
 
+  // 处理多品种批量导入
+  const handleMultiVarietyImport = useCallback((varieties: VarietyData[]) => {
+    // 限制最多5个品种
+    const limitedVarieties = varieties.slice(0, 5);
+    setLocalVarieties(limitedVarieties);
+
+    // 设置第一个品种为活动Tab
+    if (limitedVarieties.length > 0) {
+      setActiveTabId(limitedVarieties[0].id);
+    }
+  }, []);
+
   const applyChanges = useCallback(() => {
     onVarietiesChange(localVarieties);
   }, [localVarieties, onVarietiesChange]);
@@ -671,6 +684,12 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
       </NavigationTabs>
       <ConfigSection>
         <ConfigTitle>品种配置 ({localVarieties.length}/5)</ConfigTitle>
+
+        {/* 多品种批量导入 */}
+        <MultiVarietyExcelUploader
+          onDataImport={handleMultiVarietyImport}
+          onError={(error) => console.error('批量导入错误:', error)}
+        />
 
         <VarietyConfigList ref={configListRef}>
         {localVarieties.map((variety, index) => (
@@ -893,7 +912,7 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
       </ButtonGroup>
     </ConfigSection>
     </>
-  ), [localVarieties, loadingVarietyId, errorVarietyId, justImportedId, activeTabId, handleTabClick, handleVarietyDataChange, handleOpinionImport, handleOpinionEdit, handleAddOpinion, handleRemoveOpinion, removeVariety, addVariety, applyChanges, cancelChanges]);
+  ), [localVarieties, loadingVarietyId, errorVarietyId, justImportedId, activeTabId, handleTabClick, handleVarietyDataChange, handleOpinionImport, handleOpinionEdit, handleAddOpinion, handleRemoveOpinion, removeVariety, addVariety, applyChanges, cancelChanges, handleMultiVarietyImport]);
 
   // 预览区域组件 - 使用 useMemo 缓存，避免不必要的重新渲染
   const PreviewPanel = useMemo(() => (
