@@ -172,7 +172,7 @@ function transformKlineData(response: KlineDataResponse): KlineDataPoint[] {
   }
 
   // 转换数据格式
-  return quoteData.value.map(item => {
+  return quoteData.value.map((item) => {
     // 根据data_fields的顺序解析数据
     // 通常顺序为: [时间戳, 开盘, 最高, 最低, 收盘, 成交量, 成交额]
     const [timestamp, open, high, low, close] = item;

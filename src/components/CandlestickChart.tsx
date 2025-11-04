@@ -128,14 +128,22 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
 
   // 转换K线数据：从时间戳格式转为索引格式（去除时间间隙）
   const { indexedData, labels } = useMemo(() => {
-    const indexedData = candleData.map((item, index) => ({
-      x: index,  // 使用索引代替时间戳
-      o: item.o,
-      h: item.h,
-      l: item.l,
-      c: item.c,
-      timestamp: item.x  // 保留原始时间戳用于tooltip显示
-    }));
+    const indexedData = candleData.map((item, index) => {
+      // chartjs-chart-financial库的颜色逻辑与中国市场相反
+      // 需要交换开盘价和收盘价来得到正确的颜色显示
+      return {
+        x: index,  // 使用索引代替时间戳
+        // 交换开盘价和收盘价，保持最高最低价不变
+        o: item.c,  // 用收盘价作为开盘价
+        h: item.h,  // 最高价不变
+        l: item.l,  // 最低价不变
+        c: item.o,  // 用开盘价作为收盘价
+        timestamp: item.x,  // 保留原始时间戳用于tooltip显示
+        // 保存原始值用于tooltip显示
+        originalO: item.o,
+        originalC: item.c
+      };
+    });
 
     // 生成日期标签
     const labels = candleData.map(item => {
@@ -154,9 +162,31 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
       {
         label: 'K线图',
         data: indexedData,
-        color: {
-          up: '#ff4444',
-          down: '#00aa00',
+        /**
+         * K线颜色配置说明：
+         *
+         * 问题：chartjs-chart-financial库的颜色逻辑与中国市场习惯相反
+         * - 库的默认：up=涨=绿色, down=跌=红色（西方习惯）
+         * - 中国习惯：阳线=涨=红色, 阴线=跌=绿色
+         *
+         * 解决方案：
+         * 1. 在数据转换时交换开盘价和收盘价（见上方indexedData的map函数）
+         * 2. 交换后，库判断的up/down与实际相反：
+         *    - 原阳线(收>开) → 交换后(开>收) → 库判定为down
+         *    - 原阴线(收<开) → 交换后(开<收) → 库判定为up
+         * 3. 因此颜色配置也要反向：
+         *    - down配置红色 → 显示原阳线为红色 ✓
+         *    - up配置绿色 → 显示原阴线为绿色 ✓
+         * 4. 阳线用空心（无填充），阴线用实心（有填充）
+         */
+        borderColor: {
+          up: '#28a745',      // 交换后的up = 原阴线，绿色边框
+          down: '#dc3545',    // 交换后的down = 原阳线，红色边框
+          unchanged: '#999999'
+        },
+        backgroundColor: {
+          up: '#28a745',      // 交换后的up = 原阴线，绿色填充（实心）
+          down: 'transparent', // 交换后的down = 原阳线，透明填充（空心）
           unchanged: '#999999'
         },
       }
@@ -202,11 +232,12 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
           },
           label: function(context: any) {
             const point = context.raw;
+            // 由于我们交换了开盘收盘价来修正颜色，这里需要显示原始值
             return [
-              `开盘: ${point.o?.toFixed(2) || 'N/A'}`,
+              `开盘: ${point.originalO?.toFixed(2) || point.c?.toFixed(2) || 'N/A'}`,
               `最高: ${point.h?.toFixed(2) || 'N/A'}`,
               `最低: ${point.l?.toFixed(2) || 'N/A'}`,
-              `收盘: ${point.c?.toFixed(2) || 'N/A'}`
+              `收盘: ${point.originalC?.toFixed(2) || point.o?.toFixed(2) || 'N/A'}`
             ];
           }
         }
@@ -224,6 +255,9 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
         grid: {
           display: true,
           color: 'rgba(0, 0, 0, 0.1)',
+          borderDash: [5, 5],  // 虚线样式 [实线长度, 间隙长度]
+          drawOnChartArea: true,
+          drawTicks: true,
         },
         ticks: {
           color: '#666',
@@ -241,8 +275,8 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
         display: true,
         position: 'right',
         grid: {
-          display: true,
-          color: 'rgba(0, 0, 0, 0.1)',
+          display: false,  // 不显示横向网格线
+          drawBorder: true,
         },
         ticks: {
           color: '#666',
