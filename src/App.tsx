@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router';
 import styled from 'styled-components';
 import DataInputForm, { FuturesData, CompanyOpinion } from './components/DataInputForm';
@@ -6,6 +6,7 @@ import FuturesInfoCard from './components/FuturesInfoCard';
 import ExportButton from './components/ExportButton';
 import OverviewPage from './components/OverviewPage';
 import MultiVarietyChart, { VarietyData } from './components/MultiVarietyChart';
+import { calculateFuturesData } from './services/futuresDataCalculator';
 import './App.css';
 
 const AppContainer = styled.div`
@@ -178,31 +179,29 @@ MultiVarietyPage.displayName = 'MultiVarietyPage';
 function App() {
   const [futuresData, setFuturesData] = useState<FuturesData>({
     contractName: '玻璃',
-    contractCode: '2505',
-    currentPrice: 1163,
-    changePercent: 1.22,
-    changeAmount: 14,
-    date: '2025/03/14'
+    contractCode: '',
+    currentPrice: 0,
+    changePercent: 0,
+    changeAmount: 0,
+    date: ''
   });
 
-  const [opinions, setOpinions] = useState<CompanyOpinion[]>([
-    {
-      company: '平安期货',
-      direction: '偏多',
-      support: '665',
-      resistance: '690',
-      logic: '特朗普关税政策提振，黄金避险需求上升'
-    },
-    {
-      company: '紫金天风',
-      direction: '偏多',
-      support: '674-678',
-      resistance: '690-694',
-      logic: '基本面：黄金短期调整，黄金中长期多头逻辑未变'
-    }
-  ]);
+  const [opinions, setOpinions] = useState<CompanyOpinion[]>([]);
 
   const [varieties, setVarieties] = useState<VarietyData[]>([]);
+
+  // 自动加载单品种初始数据
+  useEffect(() => {
+    const initializeData = async () => {
+      try {
+        const data = await calculateFuturesData('玻璃');
+        setFuturesData(data);
+      } catch (error) {
+        console.error('初始化数据失败:', error);
+      }
+    };
+    initializeData();
+  }, []);
   // const [selectedTemplate, setSelectedTemplate] = useState<'single' | 'multi' | null>(null);
 
   const handleDataChange = useCallback((newData: FuturesData, newOpinions: CompanyOpinion[]) => {
