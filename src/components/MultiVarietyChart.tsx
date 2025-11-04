@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import { FuturesData, CompanyOpinion } from './DataInputForm';
 import CandlestickChart from './CandlestickChart';
 import OpinionTable from './OpinionTable';
 import ExcelUploader from './ExcelUploader';
+import { calculateFuturesData } from '../services/futuresDataCalculator';
 
 interface VarietyData {
   id: string;
@@ -437,8 +438,58 @@ const defaultVarieties: VarietyData[] = [
 const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVarietiesChange }) => {
   const [localVarieties, setLocalVarieties] = useState<VarietyData[]>(varieties.length > 0 ? varieties : defaultVarieties);
   const [justImportedId, setJustImportedId] = useState<string | null>(null);
+  const [loadingVarietyId, setLoadingVarietyId] = useState<string | null>(null);
+  const [errorVarietyId, setErrorVarietyId] = useState<string | null>(null);
+  const fetchTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
-  const handleVarietyDataChange = (varietyId: string, field: keyof FuturesData, value: string | number) => {
+  // 自动获取期货数据
+  const fetchFuturesData = useCallback(async (varietyId: string, contractName: string) => {
+    // 清除之前的timer
+    const existingTimer = fetchTimers.current.get(varietyId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    // 如果合约名称为空，不执行
+    if (!contractName || contractName.trim() === '') {
+      return;
+    }
+
+    // 防抖：延迟1秒后再执行
+    const timer = setTimeout(async () => {
+      setLoadingVarietyId(varietyId);
+      setErrorVarietyId(null);
+
+      try {
+        console.log('开始获取期货数据:', contractName, 'for variety:', varietyId);
+        const calculatedData = await calculateFuturesData(contractName);
+
+        // 更新品种数据 - 使用函数式更新确保获取最新状态
+        setLocalVarieties(prev => prev.map(variety => {
+          if (variety.id === varietyId) {
+            return {
+              ...variety,
+              futuresData: calculatedData
+            };
+          }
+          return variety;
+        }));
+
+        console.log('期货数据获取成功');
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : '获取数据失败';
+        setErrorVarietyId(varietyId);
+        console.error('获取期货数据失败:', errorMsg);
+      } finally {
+        setLoadingVarietyId(null);
+        fetchTimers.current.delete(varietyId);
+      }
+    }, 1000);
+
+    fetchTimers.current.set(varietyId, timer);
+  }, []); // 空依赖数组是正确的，因为内部使用了函数式更新
+
+  const handleVarietyDataChange = useCallback((varietyId: string, field: keyof FuturesData, value: string | number) => {
     setLocalVarieties(prev => prev.map(variety => {
       if (variety.id === varietyId) {
         return {
@@ -451,9 +502,14 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
       }
       return variety;
     }));
-  };
 
-  const handleOpinionImport = (varietyId: string, opinions: CompanyOpinion[]) => {
+    // 如果修改的是合约名称，触发自动获取数据
+    if (field === 'contractName' && typeof value === 'string') {
+      fetchFuturesData(varietyId, value);
+    }
+  }, [fetchFuturesData]);
+
+  const handleOpinionImport = useCallback((varietyId: string, opinions: CompanyOpinion[]) => {
     setLocalVarieties(prev => prev.map(variety => {
       if (variety.id === varietyId) {
         return {
@@ -466,10 +522,10 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
     // 标记刚导入的品种，显示提示
     setJustImportedId(varietyId);
     setTimeout(() => setJustImportedId(null), 3000);
-  };
+  }, []);
 
   // 处理观点编辑
-  const handleOpinionEdit = (varietyId: string, opinionIndex: number, field: keyof CompanyOpinion, value: string) => {
+  const handleOpinionEdit = useCallback((varietyId: string, opinionIndex: number, field: keyof CompanyOpinion, value: string) => {
     setLocalVarieties(prev => prev.map(variety => {
       if (variety.id === varietyId) {
         const updatedOpinions = [...variety.opinions];
@@ -484,10 +540,10 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
       }
       return variety;
     }));
-  };
+  }, []);
 
   // 添加观点
-  const handleAddOpinion = (varietyId: string) => {
+  const handleAddOpinion = useCallback((varietyId: string) => {
     setLocalVarieties(prev => prev.map(variety => {
       if (variety.id === varietyId) {
         return {
@@ -506,10 +562,10 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
       }
       return variety;
     }));
-  };
+  }, []);
 
   // 删除观点
-  const handleRemoveOpinion = (varietyId: string, opinionIndex: number) => {
+  const handleRemoveOpinion = useCallback((varietyId: string, opinionIndex: number) => {
     setLocalVarieties(prev => prev.map(variety => {
       if (variety.id === varietyId) {
         return {
@@ -519,9 +575,9 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
       }
       return variety;
     }));
-  };
+  }, []);
 
-  const addVariety = () => {
+  const addVariety = useCallback(() => {
     const newVariety: VarietyData = {
       id: Date.now().toString(),
       futuresData: {
@@ -535,22 +591,22 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
       opinions: []
     };
     setLocalVarieties(prev => [...prev, newVariety]);
-  };
+  }, []);
 
-  const removeVariety = (varietyId: string) => {
+  const removeVariety = useCallback((varietyId: string) => {
     setLocalVarieties(prev => prev.filter(variety => variety.id !== varietyId));
-  };
+  }, []);
 
-  const applyChanges = () => {
+  const applyChanges = useCallback(() => {
     onVarietiesChange(localVarieties);
-  };
+  }, [localVarieties, onVarietiesChange]);
 
-  const cancelChanges = () => {
+  const cancelChanges = useCallback(() => {
     setLocalVarieties(varieties.length > 0 ? varieties : defaultVarieties);
-  };
+  }, [varieties]);
 
-  // 配置区域组件
-  const ConfigPanel = () => (
+  // 配置区域组件 - 使用 useMemo 缓存，避免不必要的重新渲染
+  const ConfigPanel = useMemo(() => (
     <ConfigSection>
       <ConfigTitle>品种配置 ({localVarieties.length}/5)</ConfigTitle>
       
@@ -567,54 +623,87 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
               </RemoveButton>
             </ConfigCardTitle>
             
-            <InputGroup>
+            {/* 用户输入区域 */}
+            <div style={{ marginBottom: '15px', padding: '12px', background: '#f8f9fa', borderRadius: '6px' }}>
               <InputField>
-                <Label>品种名称</Label>
+                <Label style={{ fontSize: '14px', fontWeight: 'bold', color: '#333' }}>
+                  合约名称
+                  {loadingVarietyId === variety.id && (
+                    <span style={{ marginLeft: '8px', color: '#007bff', fontSize: '12px' }}>⏳ 正在获取数据...</span>
+                  )}
+                  {errorVarietyId === variety.id && (
+                    <span style={{ marginLeft: '8px', color: '#dc3545', fontSize: '12px' }}>❌ 获取失败</span>
+                  )}
+                </Label>
                 <Input
+                  placeholder="请输入合约名称，例如：玻璃、螺纹钢、棉花"
                   value={variety.futuresData.contractName}
                   onChange={(e) => handleVarietyDataChange(variety.id, 'contractName', e.target.value)}
+                  style={{ fontSize: '14px', padding: '8px' }}
                 />
               </InputField>
-              <InputField>
-                <Label>合约代码</Label>
-                <Input
-                  value={variety.futuresData.contractCode}
-                  onChange={(e) => handleVarietyDataChange(variety.id, 'contractCode', e.target.value)}
-                />
-              </InputField>
-              <InputField>
-                <Label>当前价格</Label>
-                <Input
-                  type="number"
-                  value={variety.futuresData.currentPrice}
-                  onChange={(e) => handleVarietyDataChange(variety.id, 'currentPrice', parseFloat(e.target.value) || 0)}
-                />
-              </InputField>
-              <InputField>
-                <Label>涨跌幅(%)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={variety.futuresData.changePercent}
-                  onChange={(e) => handleVarietyDataChange(variety.id, 'changePercent', parseFloat(e.target.value) || 0)}
-                />
-              </InputField>
-              <InputField>
-                <Label>涨跌额</Label>
-                <Input
-                  type="number"
-                  value={variety.futuresData.changeAmount}
-                  onChange={(e) => handleVarietyDataChange(variety.id, 'changeAmount', parseFloat(e.target.value) || 0)}
-                />
-              </InputField>
-              <InputField>
-                <Label>日期</Label>
-                <Input
-                  value={variety.futuresData.date}
-                  onChange={(e) => handleVarietyDataChange(variety.id, 'date', e.target.value)}
-                />
-              </InputField>
-            </InputGroup>
+            </div>
+
+            {/* 自动获取的数据展示区域 */}
+            <div style={{ padding: '12px', background: '#ffffff', borderRadius: '6px', border: '1px solid #e0e0e0', marginBottom: '15px' }}>
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px', fontWeight: 'bold' }}>
+                📊 自动获取的数据：
+              </div>
+              <InputGroup>
+                <InputField>
+                  <Label>合约代码</Label>
+                  <Input
+                    value={variety.futuresData.contractCode || '-'}
+                    disabled
+                    style={{ background: '#f8f9fa', cursor: 'not-allowed', fontSize: '11px' }}
+                  />
+                </InputField>
+                <InputField>
+                  <Label>当前价格</Label>
+                  <Input
+                    value={variety.futuresData.currentPrice || '-'}
+                    disabled
+                    style={{ background: '#f8f9fa', cursor: 'not-allowed', fontSize: '11px' }}
+                  />
+                </InputField>
+                <InputField>
+                  <Label>涨跌幅(%)</Label>
+                  <Input
+                    value={variety.futuresData.changePercent || '-'}
+                    disabled
+                    style={{
+                      background: '#f8f9fa',
+                      cursor: 'not-allowed',
+                      fontSize: '11px',
+                      color: (variety.futuresData.changePercent || 0) >= 0 ? '#ff4444' : '#00aa00',
+                      fontWeight: 'bold'
+                    }}
+                  />
+                </InputField>
+                <InputField>
+                  <Label>涨跌额</Label>
+                  <Input
+                    value={variety.futuresData.changeAmount || '-'}
+                    disabled
+                    style={{
+                      background: '#f8f9fa',
+                      cursor: 'not-allowed',
+                      fontSize: '11px',
+                      color: (variety.futuresData.changeAmount || 0) >= 0 ? '#ff4444' : '#00aa00',
+                      fontWeight: 'bold'
+                    }}
+                  />
+                </InputField>
+                <InputField>
+                  <Label>日期</Label>
+                  <Input
+                    value={variety.futuresData.date || '-'}
+                    disabled
+                    style={{ background: '#f8f9fa', cursor: 'not-allowed', fontSize: '11px' }}
+                  />
+                </InputField>
+              </InputGroup>
+            </div>
             
             <ExcelUploader
               onDataImport={(opinions) => handleOpinionImport(variety.id, opinions)}
@@ -736,10 +825,10 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
         <RemoveButton onClick={cancelChanges}>取消</RemoveButton>
       </ButtonGroup>
     </ConfigSection>
-  );
+  ), [localVarieties, loadingVarietyId, errorVarietyId, justImportedId, handleVarietyDataChange, handleOpinionImport, handleOpinionEdit, handleAddOpinion, handleRemoveOpinion, removeVariety, addVariety, applyChanges, cancelChanges]);
 
-  // 预览区域组件
-  const PreviewPanel = () => (
+  // 预览区域组件 - 使用 useMemo 缓存，避免不必要的重新渲染
+  const PreviewPanel = useMemo(() => (
     <PreviewContainer id="multi-variety-chart">
       <TopImage src="/top.png" alt="顶部装饰图" />
       
@@ -774,19 +863,19 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
           </ContentGrid>
         </VarietySection>
       ))}
-      
+
       <BottomImage src="/button.png" alt="底部装饰图" />
     </PreviewContainer>
-  );
+  ), [localVarieties]);
 
   return (
     <MainContainer>
       <LeftPanel>
-        <ConfigPanel />
+        {ConfigPanel}
       </LeftPanel>
-      
+
       <RightPanel>
-        <PreviewPanel />
+        {PreviewPanel}
       </RightPanel>
     </MainContainer>
   );
