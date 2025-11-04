@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import styled from 'styled-components';
 import { FuturesData, CompanyOpinion } from './DataInputForm';
 import CandlestickChart from './CandlestickChart';
@@ -18,26 +18,6 @@ interface MultiVarietyChartProps {
 }
 
 // ChartContainer 已被 PreviewContainer 替代
-
-const Header = styled.div`
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 30px;
-  text-align: center;
-`;
-
-const HeaderTitle = styled.h1`
-  font-size: 32px;
-  font-weight: bold;
-  margin: 0 0 10px 0;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-`;
-
-const HeaderSubtitle = styled.p`
-  font-size: 16px;
-  margin: 0;
-  opacity: 0.9;
-`;
 
 const TopImage = styled.img`
   width: 100%;
@@ -127,6 +107,51 @@ const BottomImage = styled.img`
   background-color: #f0f0f0;
 `;
 
+const NavigationTabs = styled.div`
+  display: flex;
+  gap: 8px;
+  padding: 15px 20px;
+  background: white;
+  border-bottom: 2px solid #e0e0e0;
+  overflow-x: auto;
+  flex-shrink: 0;
+
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 2px;
+  }
+`;
+
+const NavTab = styled.button<{ $active?: boolean }>`
+  padding: 8px 16px;
+  border: none;
+  border-radius: 20px;
+  background: ${props => props.$active ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f0f0f0'};
+  color: ${props => props.$active ? 'white' : '#666'};
+  font-size: 14px;
+  font-weight: ${props => props.$active ? '600' : '500'};
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: ${props => props.$active ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#e0e0e0'};
+    transform: translateY(-2px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
 const ConfigSection = styled.div`
   padding: 20px;
   background: #f8f9fa;
@@ -174,17 +199,22 @@ const VarietyConfigList = styled.div`
 
 const MainContainer = styled.div`
   display: grid;
-  grid-template-columns: 400px 1fr;
+  grid-template-columns: 550px 1fr;
   gap: 30px;
   height: 100vh;
-  max-width: 1600px;
+  max-width: 1800px;
   margin: 0 auto;
-  
+
+  @media (max-width: 1400px) {
+    grid-template-columns: 480px 1fr;
+    gap: 25px;
+  }
+
   @media (max-width: 1200px) {
-    grid-template-columns: 350px 1fr;
+    grid-template-columns: 420px 1fr;
     gap: 20px;
   }
-  
+
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
     height: auto;
@@ -331,107 +361,67 @@ const ButtonGroup = styled.div`
   margin-top: 15px;
 `;
 
-// 默认品种数据
+// 默认品种数据 - 只包含合约名称，其他数据将在页面加载时自动获取
 const defaultVarieties: VarietyData[] = [
   {
     id: '1',
     futuresData: {
       contractName: '玻璃',
-      contractCode: '2505',
-      currentPrice: 1163,
-      changePercent: 1.22,
-      changeAmount: 14,
-      date: '2025/03/14'
+      contractCode: '',
+      currentPrice: 0,
+      changePercent: 0,
+      changeAmount: 0,
+      date: ''
     },
-    opinions: [
-      {
-        company: '平安期货',
-        direction: '偏多',
-        support: '1150',
-        resistance: '1200',
-        logic: '基本面支撑较强，技术面突破在即'
-      }
-    ]
+    opinions: []
   },
   {
     id: '2',
     futuresData: {
       contractName: '螺纹钢',
-      contractCode: '2505',
-      currentPrice: 3850,
-      changePercent: -0.85,
-      changeAmount: -33,
-      date: '2025/03/14'
+      contractCode: '',
+      currentPrice: 0,
+      changePercent: 0,
+      changeAmount: 0,
+      date: ''
     },
-    opinions: [
-      {
-        company: '紫金天风',
-        direction: '震荡',
-        support: '3800',
-        resistance: '3900',
-        logic: '供需平衡，短期维持区间震荡'
-      }
-    ]
+    opinions: []
   },
   {
     id: '3',
     futuresData: {
       contractName: '铜',
-      contractCode: '2505',
-      currentPrice: 74500,
-      changePercent: 2.15,
-      changeAmount: 1570,
-      date: '2025/03/14'
+      contractCode: '',
+      currentPrice: 0,
+      changePercent: 0,
+      changeAmount: 0,
+      date: ''
     },
-    opinions: [
-      {
-        company: '国泰君安',
-        direction: '偏多',
-        support: '73000',
-        resistance: '76000',
-        logic: '全球经济复苏预期，铜需求增长'
-      }
-    ]
+    opinions: []
   },
   {
     id: '4',
     futuresData: {
       contractName: '原油',
-      contractCode: '2505',
-      currentPrice: 520,
-      changePercent: -1.25,
-      changeAmount: -6.6,
-      date: '2025/03/14'
+      contractCode: '',
+      currentPrice: 0,
+      changePercent: 0,
+      changeAmount: 0,
+      date: ''
     },
-    opinions: [
-      {
-        company: '中信期货',
-        direction: '偏空',
-        support: '510',
-        resistance: '530',
-        logic: '供应增加，需求疲软，价格承压'
-      }
-    ]
+    opinions: []
   },
   {
     id: '5',
     futuresData: {
-      contractName: '黄金',
-      contractCode: '2506',
-      currentPrice: 680,
-      changePercent: 0.75,
-      changeAmount: 5.1,
-      date: '2025/03/14'
+      contractName: '沪金',
+      contractCode: '',
+      currentPrice: 0,
+      changePercent: 0,
+      changeAmount: 0,
+      date: ''
     },
-    opinions: [
-      {
-        company: '海通期货',
-        direction: '偏多',
-        support: '675',
-        resistance: '690',
-        logic: '避险情绪升温，黄金配置价值凸显'
-      }
-    ]
+    opinions: []
   }
 ];
 
@@ -440,9 +430,77 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
   const [justImportedId, setJustImportedId] = useState<string | null>(null);
   const [loadingVarietyId, setLoadingVarietyId] = useState<string | null>(null);
   const [errorVarietyId, setErrorVarietyId] = useState<string | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState<boolean>(true);
+  const [activeTabId, setActiveTabId] = useState<string>('1');
   const fetchTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const configCardRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const previewSectionRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const configListRef = useRef<HTMLDivElement | null>(null);
+  const previewContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // 自动获取期货数据
+  // 处理导航tab点击，滚动到对应的品种
+  const handleTabClick = useCallback((varietyId: string) => {
+    setActiveTabId(varietyId);
+
+    // 滚动左侧配置区域
+    const configCard = configCardRefs.current.get(varietyId);
+    if (configCard && configListRef.current) {
+      const containerTop = configListRef.current.offsetTop;
+      const cardTop = configCard.offsetTop;
+      configListRef.current.scrollTo({
+        top: cardTop - containerTop - 20,
+        behavior: 'smooth'
+      });
+    }
+
+    // 滚动右侧预览区域
+    const previewSection = previewSectionRefs.current.get(varietyId);
+    if (previewSection && previewContainerRef.current) {
+      const containerTop = previewContainerRef.current.offsetTop;
+      const sectionTop = previewSection.offsetTop;
+      previewContainerRef.current.scrollTo({
+        top: sectionTop - containerTop,
+        behavior: 'smooth'
+      });
+    }
+  }, []);
+
+  // 立即获取期货数据（用于初始化，不使用防抖）
+  const fetchFuturesDataImmediately = useCallback(async (varietyId: string, contractName: string) => {
+    // 如果合约名称为空，不执行
+    if (!contractName || contractName.trim() === '') {
+      return;
+    }
+
+    setLoadingVarietyId(varietyId);
+    setErrorVarietyId(null);
+
+    try {
+      console.log('开始获取期货数据:', contractName, 'for variety:', varietyId);
+      const calculatedData = await calculateFuturesData(contractName);
+
+      // 更新品种数据 - 使用函数式更新确保获取最新状态
+      setLocalVarieties(prev => prev.map(variety => {
+        if (variety.id === varietyId) {
+          return {
+            ...variety,
+            futuresData: calculatedData
+          };
+        }
+        return variety;
+      }));
+
+      console.log('期货数据获取成功');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : '获取数据失败';
+      setErrorVarietyId(varietyId);
+      console.error('获取期货数据失败:', errorMsg);
+    } finally {
+      setLoadingVarietyId(null);
+    }
+  }, []);
+
+  // 自动获取期货数据（带防抖，用于用户输入时）
   const fetchFuturesData = useCallback(async (varietyId: string, contractName: string) => {
     // 清除之前的timer
     const existingTimer = fetchTimers.current.get(varietyId);
@@ -457,37 +515,11 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
 
     // 防抖：延迟1秒后再执行
     const timer = setTimeout(async () => {
-      setLoadingVarietyId(varietyId);
-      setErrorVarietyId(null);
-
-      try {
-        console.log('开始获取期货数据:', contractName, 'for variety:', varietyId);
-        const calculatedData = await calculateFuturesData(contractName);
-
-        // 更新品种数据 - 使用函数式更新确保获取最新状态
-        setLocalVarieties(prev => prev.map(variety => {
-          if (variety.id === varietyId) {
-            return {
-              ...variety,
-              futuresData: calculatedData
-            };
-          }
-          return variety;
-        }));
-
-        console.log('期货数据获取成功');
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : '获取数据失败';
-        setErrorVarietyId(varietyId);
-        console.error('获取期货数据失败:', errorMsg);
-      } finally {
-        setLoadingVarietyId(null);
-        fetchTimers.current.delete(varietyId);
-      }
+      await fetchFuturesDataImmediately(varietyId, contractName);
     }, 1000);
 
     fetchTimers.current.set(varietyId, timer);
-  }, []); // 空依赖数组是正确的，因为内部使用了函数式更新
+  }, [fetchFuturesDataImmediately]);
 
   const handleVarietyDataChange = useCallback((varietyId: string, field: keyof FuturesData, value: string | number) => {
     setLocalVarieties(prev => prev.map(variety => {
@@ -605,14 +637,49 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
     setLocalVarieties(varieties.length > 0 ? varieties : defaultVarieties);
   }, [varieties]);
 
+  // 在组件首次加载时，自动获取所有默认品种的数据
+  useEffect(() => {
+    if (isInitialLoad && varieties.length === 0) {
+      // 只在首次加载且使用默认品种时才自动获取数据
+      console.log('开始自动获取所有默认品种的期货数据...');
+
+      // 批量获取所有品种的数据
+      localVarieties.forEach((variety) => {
+        if (variety.futuresData.contractName) {
+          // 使用立即执行函数，不使用防抖
+          fetchFuturesDataImmediately(variety.id, variety.futuresData.contractName);
+        }
+      });
+
+      setIsInitialLoad(false);
+    }
+  }, [isInitialLoad, varieties.length, localVarieties, fetchFuturesDataImmediately]);
+
   // 配置区域组件 - 使用 useMemo 缓存，避免不必要的重新渲染
   const ConfigPanel = useMemo(() => (
-    <ConfigSection>
-      <ConfigTitle>品种配置 ({localVarieties.length}/5)</ConfigTitle>
-      
-      <VarietyConfigList>
+    <>
+      <NavigationTabs>
         {localVarieties.map((variety, index) => (
-          <VarietyConfigCard key={variety.id}>
+          <NavTab
+            key={variety.id}
+            $active={activeTabId === variety.id}
+            onClick={() => handleTabClick(variety.id)}
+          >
+            {variety.futuresData.contractName || `品种${index + 1}`}
+          </NavTab>
+        ))}
+      </NavigationTabs>
+      <ConfigSection>
+        <ConfigTitle>品种配置 ({localVarieties.length}/5)</ConfigTitle>
+
+        <VarietyConfigList ref={configListRef}>
+        {localVarieties.map((variety, index) => (
+          <VarietyConfigCard
+            key={variety.id}
+            ref={(el) => {
+              configCardRefs.current.set(variety.id, el);
+            }}
+          >
             <ConfigCardTitle>
               品种 {index + 1}
               <RemoveButton 
@@ -825,20 +892,21 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
         <RemoveButton onClick={cancelChanges}>取消</RemoveButton>
       </ButtonGroup>
     </ConfigSection>
-  ), [localVarieties, loadingVarietyId, errorVarietyId, justImportedId, handleVarietyDataChange, handleOpinionImport, handleOpinionEdit, handleAddOpinion, handleRemoveOpinion, removeVariety, addVariety, applyChanges, cancelChanges]);
+    </>
+  ), [localVarieties, loadingVarietyId, errorVarietyId, justImportedId, activeTabId, handleTabClick, handleVarietyDataChange, handleOpinionImport, handleOpinionEdit, handleAddOpinion, handleRemoveOpinion, removeVariety, addVariety, applyChanges, cancelChanges]);
 
   // 预览区域组件 - 使用 useMemo 缓存，避免不必要的重新渲染
   const PreviewPanel = useMemo(() => (
-    <PreviewContainer id="multi-variety-chart">
+    <PreviewContainer id="multi-variety-chart" ref={previewContainerRef}>
       <TopImage src="/top.png" alt="顶部装饰图" />
-      
-      <Header>
-        <HeaderTitle>期货市场多品种分析报告</HeaderTitle>
-        <HeaderSubtitle>专业的期货分析与投资建议</HeaderSubtitle>
-      </Header>
-      
+
       {localVarieties.map((variety, index) => (
-        <VarietySection key={variety.id}>
+        <VarietySection
+          key={variety.id}
+          ref={(el) => {
+            previewSectionRefs.current.set(variety.id, el);
+          }}
+        >
           <VarietyHeader>
             <VarietyTitle>{variety.futuresData.contractName} {variety.futuresData.contractCode}</VarietyTitle>
             <VarietyIndex>品种 {index + 1}</VarietyIndex>
