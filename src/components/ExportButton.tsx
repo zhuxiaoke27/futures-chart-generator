@@ -207,9 +207,9 @@ const ExportButton: React.FC<ExportButtonProps> = ({
       // 额外等待确保所有内容都已渲染
       await new Promise(resolve => setTimeout(resolve, 1200));
 
-      // 首先获取并固定元素的原始宽度（导出前）
-      const originalRect = element.getBoundingClientRect();
-      const fixedWidth = originalRect.width;
+      // 背景图原始宽度为750px，导出时使用此宽度以获得最佳清晰度
+      const BACKGROUND_IMAGE_WIDTH = 750;
+      const fixedWidth = BACKGROUND_IMAGE_WIDTH;
 
       // 保存元素原始样式
       const originalOverflow = element.style.overflow;
@@ -271,7 +271,8 @@ const ExportButton: React.FC<ExportButtonProps> = ({
       });
 
       const canvas = await html2canvas(element, {
-        scale: 2, // 提高图片质量
+        scale: 1, // 使用1:1比例，因为已经设置为背景图原始宽度750px
+        width: BACKGROUND_IMAGE_WIDTH, // 明确指定导出宽度为750px
         useCORS: true, // 允许跨域图片
         allowTaint: true, // 允许本地图片
         backgroundColor: '#ffffff', // 设置白色背景
@@ -284,12 +285,10 @@ const ExportButton: React.FC<ExportButtonProps> = ({
           const clonedElement = clonedDoc.getElementById(targetId);
           if (clonedElement) {
             // 处理元素本身
-            clonedElement.style.transform = 'none';
             clonedElement.style.position = 'static';
             clonedElement.style.overflow = 'visible';
             clonedElement.style.height = 'auto';
             clonedElement.style.maxHeight = 'none';
-            clonedElement.style.width = `${fixedWidth}px`;
             clonedElement.style.borderRadius = '0'; // 移除圆角，避免截断
 
             // 处理父容器
@@ -300,25 +299,27 @@ const ExportButton: React.FC<ExportButtonProps> = ({
               clonedParent.style.maxHeight = 'none';
             }
 
+            // 缩放比例：从预览宽度到背景图原始宽度
+            const PREVIEW_WIDTH = 600;
+            const scaleRatio = BACKGROUND_IMAGE_WIDTH / PREVIEW_WIDTH; // 750 / 600 = 1.25
+
+            // 按比例缩放所有需要缩放的元素（使用CSS transform）
+            // 这样可以保持布局一致性，同时提升清晰度
+            clonedElement.style.transform = `scale(${scaleRatio})`;
+            clonedElement.style.transformOrigin = 'top left';
+            clonedElement.style.width = `${PREVIEW_WIDTH}px`; // 先设置为预览宽度，再缩放
+
             // 确保所有图片可见和正确加载
             const clonedImages = clonedElement.querySelectorAll('img');
             console.log('克隆文档中的图片数量:', clonedImages.length);
             Array.from(clonedImages).forEach((img, index) => {
+              // 由于使用了transform scale，不需要手动调整图片尺寸和位置
+              // 只需确保图片可见即可
               img.style.display = 'block';
               img.style.visibility = 'visible';
               img.style.opacity = '1';
-              img.style.position = 'relative';
-              img.style.zIndex = '1';
-              img.style.objectFit = 'fill'; // 避免 cover 导致的裁剪
-              img.style.maxWidth = '100%';
-              img.style.height = 'auto';
-
-              // 获取图片在文档中的位置
-              const imgRect = img.getBoundingClientRect();
-              const offsetTop = img.offsetTop;
 
               console.log(`图片 ${index + 1}:`, img.src, '是否加载:', img.complete, '自然尺寸:', img.naturalWidth, 'x', img.naturalHeight);
-              console.log(`  位置: offsetTop=${offsetTop}, top=${imgRect.top}, bottom=${imgRect.bottom}`);
             });
 
             // 特别处理canvas元素
