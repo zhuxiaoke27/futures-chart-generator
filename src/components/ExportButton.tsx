@@ -207,9 +207,9 @@ const ExportButton: React.FC<ExportButtonProps> = ({
       // 额外等待确保所有内容都已渲染
       await new Promise(resolve => setTimeout(resolve, 1200));
 
-      // 背景图原始宽度为750px，导出时使用此宽度以获得最佳清晰度
-      const BACKGROUND_IMAGE_WIDTH = 750;
-      const fixedWidth = BACKGROUND_IMAGE_WIDTH;
+      // 使用元素的实际宽度（600px），通过 html2canvas 的 scale 参数放大到 750px
+      const originalRect = element.getBoundingClientRect();
+      const fixedWidth = originalRect.width;
 
       // 保存元素原始样式
       const originalOverflow = element.style.overflow;
@@ -271,12 +271,11 @@ const ExportButton: React.FC<ExportButtonProps> = ({
       });
 
       const canvas = await html2canvas(element, {
-        scale: 1, // 使用1:1比例，因为已经设置为背景图原始宽度750px
-        width: BACKGROUND_IMAGE_WIDTH, // 明确指定导出宽度为750px
+        scale: 2, // 使用2倍放大以提升清晰度
         useCORS: true, // 允许跨域图片
         allowTaint: true, // 允许本地图片
         backgroundColor: '#ffffff', // 设置白色背景
-        logging: true, // 开启日志用于调试
+        logging: false, // 关闭日志
         foreignObjectRendering: false, // 禁用外部对象渲染以提高兼容性
         imageTimeout: 20000, // 增加图片加载超时时间
         removeContainer: false, // 不移除容器，保留完整DOM
@@ -299,27 +298,96 @@ const ExportButton: React.FC<ExportButtonProps> = ({
               clonedParent.style.maxHeight = 'none';
             }
 
-            // 缩放比例：从预览宽度到背景图原始宽度
-            const PREVIEW_WIDTH = 600;
-            const scaleRatio = BACKGROUND_IMAGE_WIDTH / PREVIEW_WIDTH; // 750 / 600 = 1.25
+            // 不使用 CSS transform，让 html2canvas 的 scale 参数自然放大
+            // 这样可以避免图片变形问题
+            clonedElement.style.transform = 'none';
 
-            // 按比例缩放所有需要缩放的元素（使用CSS transform）
-            // 这样可以保持布局一致性，同时提升清晰度
-            clonedElement.style.transform = `scale(${scaleRatio})`;
-            clonedElement.style.transformOrigin = 'top left';
-            clonedElement.style.width = `${PREVIEW_WIDTH}px`; // 先设置为预览宽度，再缩放
-
-            // 确保所有图片可见和正确加载
+            // 确保所有图片可见且保留原始样式
             const clonedImages = clonedElement.querySelectorAll('img');
+            const originalImages = element.querySelectorAll('img');
             console.log('克隆文档中的图片数量:', clonedImages.length);
-            Array.from(clonedImages).forEach((img, index) => {
-              // 由于使用了transform scale，不需要手动调整图片尺寸和位置
-              // 只需确保图片可见即可
-              img.style.display = 'block';
-              img.style.visibility = 'visible';
-              img.style.opacity = '1';
 
-              console.log(`图片 ${index + 1}:`, img.src, '是否加载:', img.complete, '自然尺寸:', img.naturalWidth, 'x', img.naturalHeight);
+            Array.from(clonedImages).forEach((img, index) => {
+              const originalImg = originalImages[index];
+              if (originalImg) {
+                const computedStyle = window.getComputedStyle(originalImg);
+
+                // 确保图片可见
+                img.style.display = 'block';
+                img.style.visibility = 'visible';
+                img.style.opacity = '1';
+
+                // 保留定位信息
+                img.style.position = computedStyle.position;
+                if (computedStyle.position === 'absolute') {
+                  img.style.top = computedStyle.top;
+                  img.style.right = computedStyle.right;
+                  img.style.bottom = computedStyle.bottom;
+                  img.style.left = computedStyle.left;
+
+                  // 关键修复：手动计算容器尺寸以匹配图片比例
+                  // 这样不需要 object-fit 也能保持图片不变形
+                  const containerWidth = parseFloat(computedStyle.width);
+                  const containerHeight = parseFloat(computedStyle.height);
+
+                  if (img.naturalWidth && img.naturalHeight) {
+                    const imageRatio = img.naturalWidth / img.naturalHeight;
+                    const containerRatio = containerWidth / containerHeight;
+
+                    let finalWidth = containerWidth;
+                    let finalHeight = containerHeight;
+
+                    // 计算在容器内保持比例的最大尺寸
+                    if (imageRatio > containerRatio) {
+                      // 图片更宽，以宽度为准
+                      finalHeight = containerWidth / imageRatio;
+
+                      // 调整top位置以保持垂直居中
+                      const heightDiff = containerHeight - finalHeight;
+                      const currentTop = parseFloat(computedStyle.top);
+                      img.style.top = `${currentTop + (heightDiff / 2)}px`;
+                    } else {
+                      // 图片更高，以高度为准
+                      finalWidth = containerHeight * imageRatio;
+
+                      // 调整right位置以保持水平居中
+                      const widthDiff = containerWidth - finalWidth;
+                      const currentRight = parseFloat(computedStyle.right);
+                      img.style.right = `${currentRight + (widthDiff / 2)}px`;
+                    }
+
+                    // 设置容器为计算后的尺寸
+                    img.style.width = `${finalWidth}px`;
+                    img.style.height = `${finalHeight}px`;
+
+                    // 不使用 object-fit，让图片自然填充
+                    img.style.objectFit = 'fill';
+
+                    console.log(`图片 ${index + 1} (absolute):`, {
+                      src: img.src.split('/').pop(),
+                      naturalSize: `${img.naturalWidth}x${img.naturalHeight}`,
+                      naturalRatio: imageRatio.toFixed(2),
+                      originalContainer: `${containerWidth}x${containerHeight}`,
+                      finalContainer: `${finalWidth.toFixed(1)}x${finalHeight.toFixed(1)}`,
+                      finalRatio: (finalWidth / finalHeight).toFixed(2),
+                      adjustedPosition: {
+                        top: img.style.top,
+                        right: img.style.right
+                      }
+                    });
+                  } else {
+                    // 如果无法获取自然尺寸，保持原样
+                    img.style.width = computedStyle.width;
+                    img.style.height = computedStyle.height;
+                    img.style.objectFit = 'contain';
+                  }
+                } else {
+                  // 非 absolute 定位的图片，保持原样
+                  img.style.width = computedStyle.width;
+                  img.style.height = computedStyle.height;
+                  img.style.objectFit = computedStyle.objectFit;
+                }
+              }
             });
 
             // 特别处理canvas元素
