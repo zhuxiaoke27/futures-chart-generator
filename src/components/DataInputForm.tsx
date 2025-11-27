@@ -3,6 +3,8 @@ import styled from 'styled-components';
 import ExcelUploader from './ExcelUploader';
 import { calculateFuturesData } from '../services/futuresDataCalculator';
 
+export type BackgroundTemplate = '暗' | '冷' | '暖';
+
 interface FuturesData {
   contractName: string;      // 用户输入的合约名称
   contractCode: string;       // 从API获取
@@ -10,6 +12,7 @@ interface FuturesData {
   changePercent: number;      // 从K线数据计算
   changeAmount: number;       // 从K线数据计算
   date: string;              // 当天日期
+  backgroundTemplate: BackgroundTemplate; // 背景模板选择
 }
 
 interface CompanyOpinion {
@@ -120,9 +123,41 @@ const RemoveButton = styled.button`
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
-  
+
   &:hover {
     background: #c82333;
+  }
+`;
+
+const TemplateSelector = styled.div`
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  padding: 15px;
+  background: white;
+  border-radius: 8px;
+`;
+
+const TemplateOption = styled.label<{ selected: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: 2px solid ${props => props.selected ? '#007bff' : '#ddd'};
+  border-radius: 6px;
+  background: ${props => props.selected ? '#e7f3ff' : 'white'};
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: ${props => props.selected ? 'bold' : 'normal'};
+
+  &:hover {
+    border-color: #007bff;
+    background: #f0f8ff;
+  }
+
+  input[type="radio"] {
+    cursor: pointer;
   }
 `;
 
@@ -171,8 +206,11 @@ const DataInputForm: React.FC<DataInputFormProps> = ({ futuresData, opinions, on
         console.log('开始获取期货数据:', contractName);
         const calculatedData = await calculateFuturesData(contractName);
 
-        // 更新期货数据
-        onDataChange(calculatedData, opinions);
+        // 更新期货数据，保留背景模板选择
+        onDataChange({
+          ...calculatedData,
+          backgroundTemplate: futuresData.backgroundTemplate
+        }, opinions);
         console.log('期货数据获取成功');
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : '获取数据失败';
@@ -216,6 +254,12 @@ const DataInputForm: React.FC<DataInputFormProps> = ({ futuresData, opinions, on
   const removeOpinion = useCallback((index: number) => {
     const updatedOpinions = opinions.filter((_, i) => i !== index);
     onDataChange(futuresData, updatedOpinions);
+  }, [futuresData, opinions, onDataChange]);
+
+  // 处理背景模板切换
+  const handleTemplateChange = useCallback((template: BackgroundTemplate) => {
+    const updatedData = { ...futuresData, backgroundTemplate: template };
+    onDataChange(updatedData, opinions);
   }, [futuresData, opinions, onDataChange]);
 
   // 处理Excel批量导入
@@ -321,6 +365,43 @@ const DataInputForm: React.FC<DataInputFormProps> = ({ futuresData, opinions, on
             </InputField>
           </InputGroup>
         </div>
+      </FormSection>
+
+      <FormSection>
+        <SectionTitle>背景模板选择</SectionTitle>
+        <TemplateSelector>
+          <span style={{ fontSize: '14px', color: '#666', fontWeight: 'bold' }}>选择背景配色：</span>
+          <TemplateOption selected={futuresData.backgroundTemplate === '暗'}>
+            <input
+              type="radio"
+              name="backgroundTemplate"
+              value="暗"
+              checked={futuresData.backgroundTemplate === '暗'}
+              onChange={() => handleTemplateChange('暗')}
+            />
+            <span>暗色系</span>
+          </TemplateOption>
+          <TemplateOption selected={futuresData.backgroundTemplate === '冷'}>
+            <input
+              type="radio"
+              name="backgroundTemplate"
+              value="冷"
+              checked={futuresData.backgroundTemplate === '冷'}
+              onChange={() => handleTemplateChange('冷')}
+            />
+            <span>冷色系</span>
+          </TemplateOption>
+          <TemplateOption selected={futuresData.backgroundTemplate === '暖'}>
+            <input
+              type="radio"
+              name="backgroundTemplate"
+              value="暖"
+              checked={futuresData.backgroundTemplate === '暖'}
+              onChange={() => handleTemplateChange('暖')}
+            />
+            <span>暖色系</span>
+          </TemplateOption>
+        </TemplateSelector>
       </FormSection>
 
       <FormSection>

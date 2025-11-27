@@ -183,7 +183,8 @@ function App() {
     currentPrice: 0,
     changePercent: 0,
     changeAmount: 0,
-    date: ''
+    date: '',
+    backgroundTemplate: '暖' // 默认使用暖色系背景
   });
 
   const [opinions, setOpinions] = useState<CompanyOpinion[]>([]);
@@ -195,7 +196,10 @@ function App() {
     const initializeData = async () => {
       try {
         const data = await calculateFuturesData('玻璃');
-        setFuturesData(data);
+        setFuturesData(prevData => ({
+          ...data,
+          backgroundTemplate: prevData.backgroundTemplate // 保留用户选择的背景模板
+        }));
       } catch (error) {
         console.error('初始化数据失败:', error);
       }

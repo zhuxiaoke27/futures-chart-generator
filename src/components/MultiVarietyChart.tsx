@@ -372,7 +372,8 @@ const defaultVarieties: VarietyData[] = [
       currentPrice: 0,
       changePercent: 0,
       changeAmount: 0,
-      date: ''
+      date: '',
+      backgroundTemplate: '暖'
     },
     opinions: []
   },
@@ -384,7 +385,8 @@ const defaultVarieties: VarietyData[] = [
       currentPrice: 0,
       changePercent: 0,
       changeAmount: 0,
-      date: ''
+      date: '',
+      backgroundTemplate: '暖'
     },
     opinions: []
   },
@@ -396,7 +398,8 @@ const defaultVarieties: VarietyData[] = [
       currentPrice: 0,
       changePercent: 0,
       changeAmount: 0,
-      date: ''
+      date: '',
+      backgroundTemplate: '暖'
     },
     opinions: []
   },
@@ -408,7 +411,8 @@ const defaultVarieties: VarietyData[] = [
       currentPrice: 0,
       changePercent: 0,
       changeAmount: 0,
-      date: ''
+      date: '',
+      backgroundTemplate: '暖'
     },
     opinions: []
   },
@@ -420,7 +424,8 @@ const defaultVarieties: VarietyData[] = [
       currentPrice: 0,
       changePercent: 0,
       changeAmount: 0,
-      date: ''
+      date: '',
+      backgroundTemplate: '暖'
     },
     opinions: []
   }
@@ -480,12 +485,15 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
       console.log('开始获取期货数据:', contractName, 'for variety:', varietyId);
       const calculatedData = await calculateFuturesData(contractName);
 
-      // 更新品种数据 - 使用函数式更新确保获取最新状态
+      // 更新品种数据 - 使用函数式更新确保获取最新状态，保留背景模板设置
       setLocalVarieties(prev => prev.map(variety => {
         if (variety.id === varietyId) {
           return {
             ...variety,
-            futuresData: calculatedData
+            futuresData: {
+              ...calculatedData,
+              backgroundTemplate: variety.futuresData.backgroundTemplate
+            }
           };
         }
         return variety;
@@ -619,7 +627,8 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
         currentPrice: 0,
         changePercent: 0,
         changeAmount: 0,
-        date: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/')
+        date: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/'),
+        backgroundTemplate: '暖'
       },
       opinions: []
     };

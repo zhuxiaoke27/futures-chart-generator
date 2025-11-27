@@ -390,7 +390,10 @@ const MultiVarietyExcelUploader: React.FC<MultiVarietyExcelUploaderProps> = ({ o
             const futuresData = await calculateFuturesData(parsed.varietyName);
             return {
               id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-              futuresData,
+              futuresData: {
+                ...futuresData,
+                backgroundTemplate: '暖' as const
+              },
               opinions: parsed.opinions
             };
           } catch (error) {

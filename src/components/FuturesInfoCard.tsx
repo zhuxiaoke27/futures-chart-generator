@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { FuturesData, CompanyOpinion } from './DataInputForm';
+import { FuturesData, CompanyOpinion, BackgroundTemplate } from './DataInputForm';
 import CandlestickChart from './CandlestickChart';
 import OpinionTable from './OpinionTable';
 
@@ -9,13 +9,28 @@ interface FuturesInfoCardProps {
   opinions: CompanyOpinion[];
 }
 
-const CardContainer = styled.div`
+const getBackgroundImage = (template: BackgroundTemplate): string => {
+  return `/background_pic/${template}.png`;
+};
+
+// 获取品种素材图片路径
+const getVarietyAssetImage = (contractName: string, template: BackgroundTemplate): string => {
+  // 去除合约名称中可能的空格和数字
+  const cleanName = contractName.replace(/\s+/g, '').replace(/\d+/g, '');
+  return `/assets/${cleanName}-${template}.png`;
+};
+
+const CardContainer = styled.div<{ backgroundImage: string }>`
   width: 100%;
   max-width: 600px;
-  min-height: fit-content;
-  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+  min-height: fit-content; /* 根据内容自适应高度 */
+  background-image: url(${props => props.backgroundImage});
+  background-size: 100% auto; /* 宽度填满，高度自适应 */
+  background-position: top center; /* 从顶部开始对齐 */
+  background-repeat: no-repeat;
   border-radius: 12px;
   padding: 0;
+  padding-bottom: 60px; /* 底部留白，避免内容紧贴边缘 */
   margin: 0;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
@@ -29,33 +44,28 @@ const CardContainer = styled.div`
   z-index: 1;
 `;
 
-const TopImage = styled.img`
+/* 顶部占位区域，对应背景图的标题部分 */
+const TopSpacer = styled.div`
+  height: 292px; /* 按 Figma 设计比例缩放：365 * (600/750) */
   width: 100%;
-  height: auto;
-  border-radius: 12px 12px 0 0;
-  margin: 0;
-  display: block;
-  
-  /* 确保图片正确加载 */
-  object-fit: cover;
-  background-color: #f0f0f0;
-  
-  /* 如果图片加载失败，显示占位符 */
-  &::before {
-    content: '';
-    display: block;
-    width: 100%;
-    height: 60px;
-    background: #f0f0f0;
-  }
+  position: relative; /* 为品种素材图片提供定位上下文 */
 `;
 
+/* 品种素材图片 */
+const VarietyAssetImage = styled.img`
+  position: absolute;
+  width: 190px; /* 缩小至原尺寸的约80% */
+  height: 178px; /* 缩小至原尺寸的约80% */
+  right: 40px; /* 保持右边缘位置不变 */
+  top: 55px; /* 适当下移 */
+  object-fit: contain;
+  z-index: 2;
 
-
-
-
-
-
+  /* 如果图片加载失败，不显示 */
+  &[src=""], &:not([src]) {
+    display: none;
+  }
+`;
 
 
 const ChartSection = styled.div`
@@ -64,60 +74,55 @@ const ChartSection = styled.div`
 
 const TableSection = styled.div`
   margin: 20px 20px 20px 20px;
+  padding-bottom: 40px; /* 表格底部额外留白 */
 `;
-
-const BottomImage = styled.img`
-  width: 100%;
-  height: auto;
-  border-radius: 0 0 12px 12px;
-  margin: 0;
-  display: block;
-  
-  /* 确保图片正确加载 */
-  object-fit: cover;
-  background-color: #f0f0f0;
-  
-  /* 如果图片加载失败，显示占位符 */
-  &::before {
-    content: '';
-    display: block;
-    width: 100%;
-    height: 60px;
-    background: #f0f0f0;
-  }
-`;
-
 
 
 const FuturesInfoCard: React.FC<FuturesInfoCardProps> = ({ data, opinions }) => {
-  const [imagesLoaded, setImagesLoaded] = React.useState(false);
-  // const [loadedCount, setLoadedCount] = React.useState(0);
-  
-  const handleImageLoad = () => {
-    // setLoadedCount(prev => {
-    //   const newCount = prev + 1;
-    //   if (newCount >= 2) { // 两张图片都加载完成
-    //     setImagesLoaded(true);
-    //   }
-    //   return newCount;
-    // });
-    setImagesLoaded(true);
-  };
-  
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    console.warn('图片加载失败:', e.currentTarget.src);
-    handleImageLoad(); // 即使失败也计数，避免无限等待
+  const [backgroundLoaded, setBackgroundLoaded] = React.useState(false);
+  const [assetImageError, setAssetImageError] = React.useState(false);
+  const backgroundImageUrl = getBackgroundImage(data.backgroundTemplate);
+  const assetImageUrl = getVarietyAssetImage(data.contractName, data.backgroundTemplate);
+
+  // 预加载背景图
+  React.useEffect(() => {
+    const img = new Image();
+    img.onload = () => setBackgroundLoaded(true);
+    img.onerror = () => {
+      console.warn('背景图加载失败:', backgroundImageUrl);
+      setBackgroundLoaded(true); // 即使失败也标记为已加载，避免无限等待
+    };
+    img.src = backgroundImageUrl;
+  }, [backgroundImageUrl]);
+
+  // 处理品种素材图片加载错误
+  const handleAssetImageError = () => {
+    console.warn('品种素材图片加载失败:', assetImageUrl);
+    setAssetImageError(true);
   };
 
+  // 重置素材图片错误状态（当品种或背景模板变化时）
+  React.useEffect(() => {
+    setAssetImageError(false);
+  }, [assetImageUrl]);
+
   return (
-    <CardContainer id="futures-info-card" data-images-loaded={imagesLoaded}>
-      <TopImage 
-        src="/top.png" 
-        alt="期货策略顶部图片" 
-        onLoad={handleImageLoad}
-        onError={handleImageError}
-        crossOrigin="anonymous"
-      />
+    <CardContainer
+      id="futures-info-card"
+      backgroundImage={backgroundImageUrl}
+      data-background-loaded={backgroundLoaded}
+    >
+      <TopSpacer>
+        {/* 品种素材图片 - 只在图片存在且未加载失败时显示 */}
+        {!assetImageError && data.contractName && (
+          <VarietyAssetImage
+            src={assetImageUrl}
+            alt={`${data.contractName}素材图`}
+            onError={handleAssetImageError}
+            crossOrigin="anonymous"
+          />
+        )}
+      </TopSpacer>
 
       <ChartSection>
         <CandlestickChart data={data} />
@@ -126,14 +131,6 @@ const FuturesInfoCard: React.FC<FuturesInfoCardProps> = ({ data, opinions }) => 
       <TableSection>
         <OpinionTable opinions={opinions} />
       </TableSection>
-
-      <BottomImage 
-        src="/button.png" 
-        alt="期货策略底部图片" 
-        onLoad={handleImageLoad}
-        onError={handleImageError}
-        crossOrigin="anonymous"
-      />
     </CardContainer>
   );
 };
