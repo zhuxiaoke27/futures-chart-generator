@@ -9,18 +9,18 @@ interface ExcelUploaderProps {
 }
 
 const UploaderContainer = styled.div`
-  margin: 15px 0;
-  padding: 20px;
+  margin: 10px 0;
+  padding: 10px;
   border: 2px dashed #ddd;
-  border-radius: 8px;
+  border-radius: 6px;
   background: #fafafa;
   transition: all 0.3s ease;
-  
+
   &:hover {
     border-color: #007bff;
     background: #f0f8ff;
   }
-  
+
   &.dragover {
     border-color: #007bff;
     background: #e6f3ff;
@@ -29,24 +29,24 @@ const UploaderContainer = styled.div`
 
 const UploadArea = styled.div`
   text-align: center;
-  padding: 20px;
+  padding: 10px;
   cursor: pointer;
 `;
 
 const UploadIcon = styled.div`
-  font-size: 48px;
+  font-size: 32px;
   color: #007bff;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 `;
 
 const UploadText = styled.div`
-  font-size: 16px;
+  font-size: 13px;
   color: #666;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
 `;
 
 const UploadHint = styled.div`
-  font-size: 12px;
+  font-size: 11px;
   color: #999;
 `;
 
@@ -56,19 +56,19 @@ const HiddenInput = styled.input`
 
 const ButtonGroup = styled.div`
   display: flex;
-  gap: 10px;
+  gap: 8px;
   justify-content: center;
-  margin-top: 15px;
+  margin-top: 10px;
 `;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
-  padding: 8px 16px;
+  padding: 6px 12px;
   border: none;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
-  
+
   ${props => props.variant === 'primary' ? `
     background: #007bff;
     color: white;
@@ -85,11 +85,11 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
 `;
 
 const StatusMessage = styled.div<{ type: 'success' | 'error' | 'info' }>`
-  margin-top: 10px;
-  padding: 8px 12px;
+  margin-top: 8px;
+  padding: 6px 10px;
   border-radius: 4px;
-  font-size: 14px;
-  
+  font-size: 12px;
+
   ${props => {
     switch (props.type) {
       case 'success':
@@ -106,21 +106,21 @@ const StatusMessage = styled.div<{ type: 'success' | 'error' | 'info' }>`
 
 const PreviewTable = styled.table`
   width: 100%;
-  margin-top: 15px;
+  margin-top: 10px;
   border-collapse: collapse;
-  font-size: 12px;
-  
+  font-size: 11px;
+
   th, td {
     border: 1px solid #ddd;
-    padding: 6px 8px;
+    padding: 4px 6px;
     text-align: left;
   }
-  
+
   th {
     background: #f8f9fa;
     font-weight: bold;
   }
-  
+
   tr:nth-child(even) {
     background: #f9f9f9;
   }

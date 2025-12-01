@@ -1,11 +1,22 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import styled from 'styled-components';
-import { FuturesData, CompanyOpinion } from './DataInputForm';
+import { FuturesData, CompanyOpinion, BackgroundTemplate } from './DataInputForm';
 import CandlestickChart from './CandlestickChart';
 import OpinionTable from './OpinionTable';
 import ExcelUploader from './ExcelUploader';
 import MultiVarietyExcelUploader from './MultiVarietyExcelUploader';
 import { calculateFuturesData } from '../services/futuresDataCalculator';
+
+// 工具函数：获取背景图路径
+const getBackgroundImage = (template: BackgroundTemplate): string => {
+  return `/background_pic/${template}.png`;
+};
+
+// 工具函数：获取品种素材图片路径
+const getVarietyAssetImage = (contractName: string, template: BackgroundTemplate): string => {
+  const cleanName = contractName.replace(/\s+/g, '').replace(/\d+/g, '');
+  return `/assets/${cleanName}-${template}.png`;
+};
 
 interface VarietyData {
   id: string;
@@ -20,21 +31,31 @@ interface MultiVarietyChartProps {
 
 // ChartContainer 已被 PreviewContainer 替代
 
-const TopImage = styled.img`
+// 顶部占位区域，对应背景图的标题部分（为品种素材图片提供定位上下文）
+const TopSpacer = styled.div`
+  height: 365px; /* 适当增加高度以露出更多背景图内容 */
   width: 100%;
-  height: auto;
-  display: block;
-  object-fit: cover;
-  background-color: #f0f0f0;
+  position: relative; /* 关键：为品种素材图片提供定位上下文 */
+`;
+
+// 品种素材图片（等比例放大 1.25 倍以适配多品种模板）
+const VarietyAssetImage = styled.img`
+  position: absolute;
+  width: 238px; /* 190px * 1.25 */
+  height: 223px; /* 178px * 1.25 */
+  right: 40px;
+  top: 105px;
+  object-fit: contain;
+  z-index: 2;
+
+  /* 如果图片加载失败，不显示 */
+  &[src=""], &:not([src]) {
+    display: none;
+  }
 `;
 
 const VarietySection = styled.div`
   padding: 30px 50px;
-  border-bottom: 2px solid #f0f0f0;
-  
-  &:last-child {
-    border-bottom: none;
-  }
 `;
 
 const VarietyHeader = styled.div`
@@ -42,14 +63,12 @@ const VarietyHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #e0e0e0;
 `;
 
-const VarietyTitle = styled.h2`
+const VarietyTitle = styled.h2<{ isDarkTheme?: boolean }>`
   font-size: 24px;
   font-weight: bold;
-  color: #333;
+  color: ${props => props.isDarkTheme ? '#ffffff' : '#333'};
   margin: 0;
 `;
 
@@ -73,17 +92,19 @@ const ContentGrid = styled.div`
 `;
 
 const ChartSection = styled.div`
-  background: #f8f9fa;
+  background: rgba(248, 249, 250, 0.6);
   border-radius: 8px;
   padding: 20px;
   width: 100%;
+  backdrop-filter: blur(4px);
 `;
 
 const OpinionSection = styled.div`
-  background: #f8f9fa;
+  background: rgba(248, 249, 250, 0.6);
   border-radius: 8px;
   padding: 20px;
   width: 100%;
+  backdrop-filter: blur(4px);
 `;
 
 const SectionTitle = styled.h3`
@@ -98,14 +119,6 @@ const SectionTitle = styled.h3`
 
 const SectionIcon = styled.span`
   font-size: 20px;
-`;
-
-const BottomImage = styled.img`
-  width: 100%;
-  height: auto;
-  display: block;
-  object-fit: cover;
-  background-color: #f0f0f0;
 `;
 
 const NavigationTabs = styled.div`
@@ -167,6 +180,35 @@ const ConfigTitle = styled.h3`
   font-weight: 600;
   color: #333;
   margin: 0 0 20px 0;
+`;
+
+const ConfigHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+`;
+
+const CollapseControls = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const CollapseButton = styled.button`
+  padding: 4px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  color: #666;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: #007bff;
+    color: #007bff;
+    background: #f0f8ff;
+  }
 `;
 
 // VarietyConfigGrid 已被 VarietyConfigList 替代
@@ -249,9 +291,13 @@ const RightPanel = styled.div`
   }
 `;
 
-const PreviewContainer = styled.div`
+const PreviewContainer = styled.div<{ backgroundImage?: string }>`
   width: 100%;
-  background: white;
+  background-image: ${props => props.backgroundImage ? `url(${props.backgroundImage})` : 'none'};
+  background-size: 100% auto;
+  background-position: top center;
+  background-repeat: no-repeat;
+  background-color: white;
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
@@ -295,6 +341,32 @@ const ConfigCardTitle = styled.h4`
   font-weight: 600;
   color: #333;
   margin: 0 0 15px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const CardCollapseButton = styled.button`
+  padding: 2px 8px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: white;
+  color: #666;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: auto;
+  margin-right: 8px;
+
+  &:hover {
+    border-color: #007bff;
+    color: #007bff;
+    background: #f0f8ff;
+  }
+`;
+
+const CardContent = styled.div<{ collapsed: boolean }>`
+  display: ${props => props.collapsed ? 'none' : 'block'};
 `;
 
 const InputGroup = styled.div`
@@ -360,6 +432,40 @@ const ButtonGroup = styled.div`
   gap: 10px;
   justify-content: flex-end;
   margin-top: 15px;
+`;
+
+// 背景模板选择器
+const TemplateSelector = styled.div`
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  padding: 15px;
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 20px;
+`;
+
+const TemplateOption = styled.label<{ selected: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: 2px solid ${props => props.selected ? '#007bff' : '#ddd'};
+  border-radius: 6px;
+  background: ${props => props.selected ? '#e7f3ff' : 'white'};
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: ${props => props.selected ? 'bold' : 'normal'};
+
+  &:hover {
+    border-color: #007bff;
+    background: #f0f8ff;
+  }
+
+  input[type="radio"] {
+    cursor: pointer;
+  }
 `;
 
 // 默认品种数据 - 只包含合约名称，其他数据将在页面加载时自动获取
@@ -438,6 +544,9 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
   const [errorVarietyId, setErrorVarietyId] = useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState<boolean>(true);
   const [activeTabId, setActiveTabId] = useState<string>('1');
+  const [globalBackgroundTemplate, setGlobalBackgroundTemplate] = useState<BackgroundTemplate>('暖');
+  const [assetImageError, setAssetImageError] = useState(false);
+  const [collapsedVarieties, setCollapsedVarieties] = useState<Set<string>>(new Set());
   const fetchTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const configCardRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const previewSectionRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
@@ -659,6 +768,41 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
     setLocalVarieties(varieties.length > 0 ? varieties : defaultVarieties);
   }, [varieties]);
 
+  // 背景模板切换处理
+  const handleTemplateChange = useCallback((template: BackgroundTemplate) => {
+    setGlobalBackgroundTemplate(template);
+    setAssetImageError(false);
+  }, []);
+
+  // 素材图片加载失败处理
+  const handleAssetImageError = useCallback(() => {
+    console.warn('品种素材图片加载失败');
+    setAssetImageError(true);
+  }, []);
+
+  // 切换单个品种的折叠状态
+  const toggleVarietyCollapse = useCallback((varietyId: string) => {
+    setCollapsedVarieties(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(varietyId)) {
+        newSet.delete(varietyId);
+      } else {
+        newSet.add(varietyId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  // 全部展开
+  const expandAll = useCallback(() => {
+    setCollapsedVarieties(new Set());
+  }, []);
+
+  // 全部收起
+  const collapseAll = useCallback(() => {
+    setCollapsedVarieties(new Set(localVarieties.map(v => v.id)));
+  }, [localVarieties]);
+
   // 在组件首次加载时，自动获取所有默认品种的数据
   useEffect(() => {
     if (isInitialLoad && varieties.length === 0) {
@@ -677,6 +821,17 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
     }
   }, [isInitialLoad, varieties.length, localVarieties, fetchFuturesDataImmediately]);
 
+  // 重置素材图片错误状态（当素材图片URL变化时）
+  const backgroundImageUrl = getBackgroundImage(globalBackgroundTemplate);
+  const firstVariety = localVarieties[0];
+  const assetImageUrl = firstVariety
+    ? getVarietyAssetImage(firstVariety.futuresData.contractName, globalBackgroundTemplate)
+    : '';
+
+  useEffect(() => {
+    setAssetImageError(false);
+  }, [assetImageUrl]);
+
   // 配置区域组件 - 使用 useMemo 缓存，避免不必要的重新渲染
   const ConfigPanel = useMemo(() => (
     <>
@@ -692,7 +847,48 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
         ))}
       </NavigationTabs>
       <ConfigSection>
-        <ConfigTitle>品种配置 ({localVarieties.length}/5)</ConfigTitle>
+        {/* 背景模板选择器 */}
+        <TemplateSelector>
+          <span style={{ fontSize: '14px', color: '#666', fontWeight: 'bold' }}>背景模板：</span>
+          <TemplateOption selected={globalBackgroundTemplate === '暗'}>
+            <input
+              type="radio"
+              name="globalBackgroundTemplate"
+              value="暗"
+              checked={globalBackgroundTemplate === '暗'}
+              onChange={() => handleTemplateChange('暗')}
+            />
+            <span>暗色系</span>
+          </TemplateOption>
+          <TemplateOption selected={globalBackgroundTemplate === '冷'}>
+            <input
+              type="radio"
+              name="globalBackgroundTemplate"
+              value="冷"
+              checked={globalBackgroundTemplate === '冷'}
+              onChange={() => handleTemplateChange('冷')}
+            />
+            <span>冷色系</span>
+          </TemplateOption>
+          <TemplateOption selected={globalBackgroundTemplate === '暖'}>
+            <input
+              type="radio"
+              name="globalBackgroundTemplate"
+              value="暖"
+              checked={globalBackgroundTemplate === '暖'}
+              onChange={() => handleTemplateChange('暖')}
+            />
+            <span>暖色系</span>
+          </TemplateOption>
+        </TemplateSelector>
+
+        <ConfigHeader>
+          <ConfigTitle style={{ margin: 0 }}>品种配置 ({localVarieties.length}/5)</ConfigTitle>
+          <CollapseControls>
+            <CollapseButton onClick={expandAll}>全部展开</CollapseButton>
+            <CollapseButton onClick={collapseAll}>全部收起</CollapseButton>
+          </CollapseControls>
+        </ConfigHeader>
 
         {/* 多品种批量导入 */}
         <MultiVarietyExcelUploader
@@ -709,15 +905,18 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
             }}
           >
             <ConfigCardTitle>
-              品种 {index + 1}
-              <RemoveButton 
+              <span>品种 {index + 1}</span>
+              <CardCollapseButton onClick={() => toggleVarietyCollapse(variety.id)}>
+                {collapsedVarieties.has(variety.id) ? '展开 ▼' : '收起 ▲'}
+              </CardCollapseButton>
+              <RemoveButton
                 onClick={() => removeVariety(variety.id)}
-                style={{ float: 'right' }}
               >
                 删除
               </RemoveButton>
             </ConfigCardTitle>
-            
+
+            <CardContent collapsed={collapsedVarieties.has(variety.id)}>
             {/* 用户输入区域 */}
             <div style={{ marginBottom: '15px', padding: '12px', background: '#f8f9fa', borderRadius: '6px' }}>
               <InputField>
@@ -908,6 +1107,7 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
                 </div>
               )}
             </div>
+            </CardContent>
           </VarietyConfigCard>
         ))}
       </VarietyConfigList>
@@ -921,12 +1121,27 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
       </ButtonGroup>
     </ConfigSection>
     </>
-  ), [localVarieties, loadingVarietyId, errorVarietyId, justImportedId, activeTabId, handleTabClick, handleVarietyDataChange, handleOpinionImport, handleOpinionEdit, handleAddOpinion, handleRemoveOpinion, removeVariety, addVariety, applyChanges, cancelChanges, handleMultiVarietyImport]);
+  ), [localVarieties, loadingVarietyId, errorVarietyId, justImportedId, activeTabId, globalBackgroundTemplate, collapsedVarieties, handleTabClick, handleVarietyDataChange, handleOpinionImport, handleOpinionEdit, handleAddOpinion, handleRemoveOpinion, removeVariety, addVariety, applyChanges, cancelChanges, handleMultiVarietyImport, handleTemplateChange, toggleVarietyCollapse, expandAll, collapseAll]);
 
   // 预览区域组件 - 使用 useMemo 缓存，避免不必要的重新渲染
   const PreviewPanel = useMemo(() => (
-    <PreviewContainer id="multi-variety-chart" ref={previewContainerRef}>
-      <TopImage src="/top.png" alt="顶部装饰图" />
+    <PreviewContainer
+      id="multi-variety-chart"
+      ref={previewContainerRef}
+      backgroundImage={backgroundImageUrl}
+    >
+      {/* 顶部占位区域 - 露出背景图的标题和装饰 */}
+      <TopSpacer>
+        {/* 品种素材图片 - 定位在TopSpacer内，与单品种模板保持一致 */}
+        {!assetImageError && firstVariety && firstVariety.futuresData.contractName && (
+          <VarietyAssetImage
+            src={assetImageUrl}
+            alt={`${firstVariety.futuresData.contractName}素材图`}
+            onError={handleAssetImageError}
+            crossOrigin="anonymous"
+          />
+        )}
+      </TopSpacer>
 
       {localVarieties.map((variety, index) => (
         <VarietySection
@@ -936,10 +1151,12 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
           }}
         >
           <VarietyHeader>
-            <VarietyTitle>{variety.futuresData.contractName} {variety.futuresData.contractCode}</VarietyTitle>
+            <VarietyTitle isDarkTheme={globalBackgroundTemplate === '暗'}>
+              {variety.futuresData.contractName} {variety.futuresData.contractCode}
+            </VarietyTitle>
             <VarietyIndex>品种 {index + 1}</VarietyIndex>
           </VarietyHeader>
-          
+
           <ContentGrid>
             <ChartSection>
               <SectionTitle>
@@ -948,7 +1165,7 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
               </SectionTitle>
               <CandlestickChart data={variety.futuresData} />
             </ChartSection>
-            
+
             <OpinionSection>
               <SectionTitle>
                 <SectionIcon>💡</SectionIcon>
@@ -959,10 +1176,8 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
           </ContentGrid>
         </VarietySection>
       ))}
-
-      <BottomImage src="/button.png" alt="底部装饰图" />
     </PreviewContainer>
-  ), [localVarieties]);
+  ), [localVarieties, backgroundImageUrl, assetImageUrl, assetImageError, firstVariety, handleAssetImageError, globalBackgroundTemplate]);
 
   return (
     <MainContainer>
