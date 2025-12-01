@@ -18,6 +18,25 @@ const getVarietyAssetImage = (contractName: string, template: BackgroundTemplate
   return `/assets/${cleanName}-${template}.png`;
 };
 
+// 背景模板配置（从 Figma 设计稿提取）
+const backgroundTemplateConfig: Record<BackgroundTemplate, {
+  color: string;        // 底部颜色
+  gradientAngle: string; // 渐变角度
+}> = {
+  '暗': {
+    color: '#0A123C',           // linear-gradient(179.64deg, #020305 1.96%, #0A123C 17.5%)
+    gradientAngle: '180deg'     // 竖直向下
+  },
+  '冷': {
+    color: '#E2F0FC',           // linear-gradient(180deg, #A6D1F7 -2.79%, #E2F0FC 100%)
+    gradientAngle: '180deg'     // 竖直向下
+  },
+  '暖': {
+    color: '#F7CFA6',           // linear-gradient(166.33deg, #F7CFA6 5.72%, #FFF6E6 78.09%)
+    gradientAngle: '346.33deg'  // 旋转后的角度
+  }
+};
+
 interface VarietyData {
   id: string;
   futuresData: FuturesData;
@@ -291,13 +310,46 @@ const RightPanel = styled.div`
   }
 `;
 
-const PreviewContainer = styled.div<{ backgroundImage?: string }>`
+const PreviewContainer = styled.div<{
+  backgroundImage?: string;
+  template?: BackgroundTemplate;
+}>`
   width: 100%;
-  background-image: ${props => props.backgroundImage ? `url(${props.backgroundImage})` : 'none'};
-  background-size: 100% auto;
-  background-position: top center;
-  background-repeat: no-repeat;
-  background-color: white;
+
+  /* 多层背景：原背景图 + 渐变层 */
+  background-image:
+    ${props => props.backgroundImage ? `url(${props.backgroundImage})` : 'none'},
+    ${props => props.template ?
+      `linear-gradient(${backgroundTemplateConfig[props.template].gradientAngle},
+        transparent 0%,
+        transparent 60%,
+        ${backgroundTemplateConfig[props.template].color}20 70%,
+        ${backgroundTemplateConfig[props.template].color}40 78%,
+        ${backgroundTemplateConfig[props.template].color}70 86%,
+        ${backgroundTemplateConfig[props.template].color}90 93%,
+        ${backgroundTemplateConfig[props.template].color} 100%)`
+      : 'none'
+    };
+
+  /* 背景尺寸：原背景图保持原样，渐变覆盖全部 */
+  background-size:
+    100% auto,    // 原背景图尺寸
+    100% 100%;    // 渐变覆盖全部
+
+  /* 背景位置 */
+  background-position:
+    top center,   // 原背景图位置
+    top center;   // 渐变位置
+
+  /* 背景重复 */
+  background-repeat:
+    no-repeat,    // 原背景图不重复
+    no-repeat;    // 渐变不重复
+
+  /* 底部纯色背景（当内容超出渐变范围时显示） */
+  background-color: ${props =>
+    props.template ? backgroundTemplateConfig[props.template].color : 'white'
+  };
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
@@ -1129,6 +1181,7 @@ const MultiVarietyChart: React.FC<MultiVarietyChartProps> = ({ varieties, onVari
       id="multi-variety-chart"
       ref={previewContainerRef}
       backgroundImage={backgroundImageUrl}
+      template={globalBackgroundTemplate}
     >
       {/* 顶部占位区域 - 露出背景图的标题和装饰 */}
       <TopSpacer>
